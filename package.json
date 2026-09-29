@@ -12,12 +12,14 @@
     "db:studio": "drizzle-kit studio",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
-    "srs:rebuild": "tsx --conditions=react-server dev/scripts/rebuild-review-states.ts"
+    "srs:rebuild": "tsx --conditions=react-server dev/scripts/rebuild-review-states.ts",
+    "vercel-build": "if [ \"$VERCEL_ENV\" = \"production\" ]; then npm run db:migrate; fi && next build"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
     "@neon/config": "^1.8.3",
     "@neon/env": "^1.4.8",
+    "@neondatabase/auth": "^0.5.0-beta",
     "@vercel/functions": "^3.9.9",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.4.0",

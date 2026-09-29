@@ -1,10 +1,12 @@
 import { duolingoImportSchema } from "@/importers/duolingo/protocol";
 import { saveDuolingoImport } from "@/importers/duolingo/save";
+import { assertUser } from "@/server/session";
 
 export async function POST(request: Request) {
-  // No auth yet: only allow imports from a local dev server.
-  if (process.env.NODE_ENV === "production") {
-    return Response.json({ error: "Import is disabled in production until sign-in is added." }, { status: 403 });
+  try {
+    await assertUser();
+  } catch {
+    return Response.json({ error: "Sign in to Duolingo Helper first." }, { status: 401 });
   }
 
   let body: unknown;

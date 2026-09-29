@@ -15,15 +15,33 @@ npm run db:migrate         # apply migrations
 npm run dev
 ```
 
+## Sign-in
+
+Neon Auth (Managed Better Auth), email + password. The app is private: only addresses in
+`ALLOWED_EMAILS` (comma-separated) can create an account or use it. Every page, server action and
+API route checks the session. `.env.local` also needs `NEON_AUTH_COOKIE_SECRET` (32+ random
+characters) — `neon env pull` does not create it.
+
+## Deployment (Vercel)
+
+- Pushing to `main` deploys to production (Vercel project `duolingo-helper`, linked to this repo).
+- Production uses the Neon `production` branch; env vars are set in Vercel (Production only):
+  `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET`,
+  `ALLOWED_EMAILS`, `NEON_BRANCH`.
+- `vercel-build` runs `db:migrate` against production before `next build`, so schema changes ship
+  with the code.
+- Neon Auth only redirects to trusted origins: `neon neon-auth domain add https://<domain> --branch production`.
+
 ## Importing words from Duolingo
 
-1. Run the app locally (`npm run dev`, port 3000).
+1. Sign in to the app (locally on port 3000, or the deployed site — set `window.DUOLINGO_HELPER_URL`
+   to the site URL before running the script).
 2. Open https://www.duolingo.com/practice-hub/words (signed in), reload it, and paste
    `src/importers/duolingo/browser-script.js` into the browser console.
 3. Click the green **Send N words to Duolingo Helper** button. It opens `/import`, which saves them.
 
 Re-importing is safe: existing words are updated (audio, order, translations) and keep their tags
-and review history. Import is disabled in production until sign-in is added.
+and review history.
 
 ## Database
 

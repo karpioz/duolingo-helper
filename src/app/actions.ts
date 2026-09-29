@@ -5,9 +5,11 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db";
 import { wordTags } from "@/db/schema";
+import { assertUser } from "@/server/session";
 import { createExam, examOptionsSchema, recordAnswer, recordMatchBoard, type AnswerResult } from "@/server/exams";
 
 export async function toggleWordTag(wordId: number, tagId: number, on: boolean): Promise<void> {
+  await assertUser();
   const ids = z.object({ wordId: z.number().int(), tagId: z.number().int() }).parse({ wordId, tagId });
   if (on) {
     await db.insert(wordTags).values(ids).onConflictDoNothing();
@@ -17,6 +19,11 @@ export async function toggleWordTag(wordId: number, tagId: number, on: boolean):
 }
 
 export async function startExam(input: unknown): Promise<{ error: string }> {
+  try {
+    await assertUser();
+  } catch {
+    return { error: "You are signed out. Reload the page and sign in." };
+  }
   const parsed = examOptionsSchema.safeParse(input);
   if (!parsed.success) return { error: "Invalid test options." };
   const id = await createExam(parsed.data);
@@ -31,6 +38,7 @@ export async function submitAnswer(
   responseMs: number | null,
 ): Promise<{ ok: true; result: AnswerResult } | { ok: false; error: string }> {
   try {
+    await assertUser();
     const result = await recordAnswer(sessionId, index, String(given ?? ""), responseMs);
     return { ok: true, result };
   } catch (err) {
@@ -45,6 +53,7 @@ export async function submitMatchBoard(
   elapsedMs: number | null,
 ): Promise<{ ok: true; isLast: boolean } | { ok: false; error: string }> {
   try {
+    await assertUser();
     const parsed = z
       .array(z.object({ wordId: z.number().int(), mistakes: z.number().int().min(0) }))
       .max(10)

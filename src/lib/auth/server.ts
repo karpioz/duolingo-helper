@@ -1,0 +1,8 @@
+import "server-only";
+import { createNeonAuth } from "@neondatabase/auth/next/server";
+
+/** Neon Managed Better Auth (users and sessions live in the branch's `neon_auth` schema). */
+export const auth = createNeonAuth({
+  baseUrl: process.env.NEON_AUTH_BASE_URL!,
+  cookies: { secret: process.env.NEON_AUTH_COOKIE_SECRET! },
+});
