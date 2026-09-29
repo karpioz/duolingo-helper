@@ -30,7 +30,7 @@ export default async function ResultsPage({ params }: PageProps<"/test/[id]/resu
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8">
       <section className="space-y-1">
-        <p className="text-sm text-muted-foreground">{describeExam(session.source, session.direction)}</p>
+        <p className="text-sm text-muted-foreground">{describeExam(session.source, session.direction, session.mode)}</p>
         <h1 className="text-3xl font-semibold tracking-tight tabular-nums">
           {correct} / {answers.length} <span className="text-muted-foreground">· {pct}%</span>
         </h1>
@@ -49,6 +49,7 @@ export default async function ResultsPage({ params }: PageProps<"/test/[id]/resu
           <RetestButton
             wordIds={missedIds}
             direction={session.direction}
+            mode={session.mode === "match" ? "match" : "typed"}
             lenient={lenient}
             label={`Retest ${missedIds.length} missed`}
           />
@@ -85,6 +86,8 @@ export default async function ResultsPage({ params }: PageProps<"/test/[id]/resu
                     <>
                       You wrote: <span className="line-through">{a.given}</span>
                     </>
+                  ) : session.mode === "match" ? (
+                    "Mismatched at least once"
                   ) : (
                     "Skipped"
                   )}

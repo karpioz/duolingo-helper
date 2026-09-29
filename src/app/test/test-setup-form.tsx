@@ -11,6 +11,12 @@ import type { TagWithCount } from "@/server/words";
 
 type Source = "recent" | "alphabetical" | "random" | "tagged" | "missed";
 type Direction = "source_to_target" | "target_to_source" | "mixed";
+type Mode = "typed" | "match";
+
+const MODES: { value: Mode; label: string; hint: string }[] = [
+  { value: "typed", label: "Type answers", hint: "Write the translation" },
+  { value: "match", label: "Match pairs", hint: "Pair Spanish and English tiles, 5 at a time" },
+];
 
 const COUNTS = [10, 20] as const;
 
@@ -22,10 +28,10 @@ const SOURCES: { value: Source; label: string; hint: string }[] = [
   { value: "missed", label: "Missed last time", hint: "Words you got wrong most recently" },
 ];
 
-const DIRECTIONS: { value: Direction; label: string }[] = [
-  { value: "source_to_target", label: "Spanish → English" },
-  { value: "target_to_source", label: "English → Spanish" },
-  { value: "mixed", label: "Mixed" },
+const DIRECTIONS: { value: Direction; label: string; matchLabel: string }[] = [
+  { value: "source_to_target", label: "Spanish → English", matchLabel: "Spanish | English" },
+  { value: "target_to_source", label: "English → Spanish", matchLabel: "English | Spanish" },
+  { value: "mixed", label: "Mixed", matchLabel: "Mixed" },
 ];
 
 export function TestSetupForm({
@@ -37,6 +43,7 @@ export function TestSetupForm({
   missedWords: number;
   tags: TagWithCount[];
 }) {
+  const [mode, setMode] = useState<Mode>("typed");
   const [countChoice, setCountChoice] = useState<number | "custom">(10);
   const [customCount, setCustomCount] = useState("30");
   const [source, setSource] = useState<Source>("recent");
@@ -60,13 +67,21 @@ export function TestSetupForm({
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const res = await startExam({ count, source, direction, lenient, tagIds, startLetter });
+      const res = await startExam({ mode, count, source, direction, lenient, tagIds, startLetter });
       if (res?.error) setError(res.error);
     });
   }
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-7">
+      <Field label="Test type">
+        <div className="grid gap-2 sm:grid-cols-2">
+          {MODES.map((m) => (
+            <OptionCard key={m.value} selected={mode === m.value} onClick={() => setMode(m.value)} label={m.label} hint={m.hint} />
+          ))}
+        </div>
+      </Field>
+
       <Field label="How many words?">
         <div className="flex flex-wrap items-center gap-2">
           {COUNTS.map((n) => (
@@ -95,19 +110,7 @@ export function TestSetupForm({
       <Field label="Which words?">
         <div className="grid gap-2 sm:grid-cols-2">
           {SOURCES.map((s) => (
-            <button
-              key={s.value}
-              type="button"
-              onClick={() => setSource(s.value)}
-              aria-pressed={source === s.value}
-              className={cn(
-                "rounded-xl border p-3 text-left transition-colors",
-                source === s.value ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted",
-              )}
-            >
-              <div className="text-sm font-medium">{s.label}</div>
-              <div className="text-xs text-muted-foreground">{s.hint}</div>
-            </button>
+            <OptionCard key={s.value} selected={source === s.value} onClick={() => setSource(s.value)} label={s.label} hint={s.hint} />
           ))}
         </div>
         {source === "tagged" && (
@@ -141,17 +144,17 @@ export function TestSetupForm({
         <p className="mt-2 text-xs text-muted-foreground">{available.toLocaleString()} words available</p>
       </Field>
 
-      <Field label="Direction">
+      <Field label={mode === "match" ? "Columns" : "Direction"}>
         <div className="flex flex-wrap gap-2">
           {DIRECTIONS.map((d) => (
             <Choice key={d.value} selected={direction === d.value} onClick={() => setDirection(d.value)}>
-              {d.label}
+              {mode === "match" ? d.matchLabel : d.label}
             </Choice>
           ))}
         </div>
       </Field>
 
-      <div className="flex items-start gap-3">
+      <div className={cn("flex items-start gap-3", mode === "match" && "hidden")}>
         <Switch id="lenient" checked={lenient} onCheckedChange={setLenient} />
         <div className="space-y-0.5">
           <Label htmlFor="lenient">Lenient checking</Label>
@@ -174,6 +177,33 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <legend className="mb-2 text-sm font-medium">{label}</legend>
       {children}
     </fieldset>
+  );
+}
+
+function OptionCard({
+  selected,
+  onClick,
+  label,
+  hint,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  label: string;
+  hint: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={cn(
+        "rounded-xl border p-3 text-left transition-colors",
+        selected ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted",
+      )}
+    >
+      <div className="text-sm font-medium">{label}</div>
+      <div className="text-xs text-muted-foreground">{hint}</div>
+    </button>
   );
 }
 

@@ -14,6 +14,7 @@ export const DIRECTION_LABELS: Record<string, string> = {
   mixed: "Mixed",
 };
 
-export function describeExam(source: string, direction: string) {
-  return `${SOURCE_LABELS[source] ?? source} · ${DIRECTION_LABELS[direction] ?? direction}`;
+export function describeExam(source: string, direction: string, mode?: string) {
+  const base = `${SOURCE_LABELS[source] ?? source} · ${DIRECTION_LABELS[direction] ?? direction}`;
+  return mode === "match" ? `Match pairs · ${base}` : base;
 }

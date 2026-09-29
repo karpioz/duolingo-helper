@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import { getExam } from "@/server/exams";
+import { getExam, getMatchExam } from "@/server/exams";
 import { listTags } from "@/server/words";
+import { MatchRunner } from "./match-runner";
 import { TestRunner } from "./test-runner";
 
 export const metadata: Metadata = { title: "Test · Duolingo Helper" };
@@ -9,6 +10,16 @@ export const metadata: Metadata = { title: "Test · Duolingo Helper" };
 export default async function TestPage({ params }: PageProps<"/test/[id]">) {
   const id = Number((await params).id);
   if (!Number.isInteger(id)) notFound();
+
+  const match = await getMatchExam(id);
+  if (match) {
+    if (match.boardIndex >= match.boards.length) redirect(`/test/${id}/results`);
+    return (
+      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8">
+        <MatchRunner examId={id} boards={match.boards} startBoard={match.boardIndex} />
+      </main>
+    );
+  }
 
   const [exam, tags] = await Promise.all([getExam(id), listTags()]);
   if (!exam) notFound();

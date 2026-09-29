@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db";
 import { wordTags } from "@/db/schema";
-import { createExam, examOptionsSchema, recordAnswer, type AnswerResult } from "@/server/exams";
+import { createExam, examOptionsSchema, recordAnswer, recordMatchBoard, type AnswerResult } from "@/server/exams";
 
 export async function toggleWordTag(wordId: number, tagId: number, on: boolean): Promise<void> {
   const ids = z.object({ wordId: z.number().int(), tagId: z.number().int() }).parse({ wordId, tagId });
@@ -35,5 +35,23 @@ export async function submitAnswer(
     return { ok: true, result };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Could not save the answer." };
+  }
+}
+
+export async function submitMatchBoard(
+  sessionId: number,
+  boardIndex: number,
+  results: { wordId: number; mistakes: number }[],
+  elapsedMs: number | null,
+): Promise<{ ok: true; isLast: boolean } | { ok: false; error: string }> {
+  try {
+    const parsed = z
+      .array(z.object({ wordId: z.number().int(), mistakes: z.number().int().min(0) }))
+      .max(10)
+      .parse(results);
+    const { isLast } = await recordMatchBoard(sessionId, boardIndex, parsed, elapsedMs);
+    return { ok: true, isLast };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Could not save the board." };
   }
 }

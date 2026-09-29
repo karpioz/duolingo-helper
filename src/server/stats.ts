@@ -61,13 +61,14 @@ export type TestScore = {
   correct: number;
   source: string;
   direction: string;
+  mode: string;
 };
 
 /** Most recent finished tests, oldest first. */
 export async function testScores(limit = 30) {
   const list = await rows<TestScore>(sql`
     select id, to_char(started_at at time zone ${APP_TIMEZONE}, 'YYYY-MM-DD"T"HH24:MI') as "startedAt",
-           size, correct, source, direction
+           size, correct, source, direction, mode
     from ${examSessions}
     where finished_at is not null and size > 0
     order by started_at desc limit ${limit}`);

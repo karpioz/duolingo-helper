@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 export function RetestButton({
   wordIds,
   direction,
+  mode,
   lenient,
   label,
 }: {
   wordIds: number[];
   direction: "source_to_target" | "target_to_source" | "mixed";
+  mode: "typed" | "match";
   lenient: boolean;
   label: string;
 }) {
@@ -24,7 +26,7 @@ export function RetestButton({
         disabled={pending}
         onClick={() =>
           startTransition(async () => {
-            const res = await startExam({ count: wordIds.length, source: "retest", direction, lenient, wordIds });
+            const res = await startExam({ mode, count: wordIds.length, source: "retest", direction, lenient, wordIds });
             if (res?.error) setError(res.error);
           })
         }

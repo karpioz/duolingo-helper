@@ -52,7 +52,7 @@ export default async function Home() {
                   <li key={e.id}>
                     <Link href={`/test/${e.id}/results`} className="flex items-center justify-between gap-4 py-2.5 hover:underline">
                       <span className="text-sm">
-                        {describeExam(e.source, e.direction)}
+                        {describeExam(e.source, e.direction, e.mode)}
                         <span className="ml-2 text-muted-foreground">
                           {e.startedAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                         </span>
