@@ -24,7 +24,8 @@ characters) — `neon env pull` does not create it.
 
 ## Deployment (Vercel)
 
-- Pushing to `main` deploys to production (Vercel project `duolingo-helper`, linked to this repo).
+- Live at https://duolingo-helper-gamma.vercel.app. Pushing to `main` deploys to production
+  (Vercel project `duolingo-helper`, linked to this repo).
 - Production uses the Neon `production` branch; env vars are set in Vercel (Production only):
   `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `NEON_AUTH_BASE_URL`, `NEON_AUTH_COOKIE_SECRET`,
   `ALLOWED_EMAILS`, `NEON_BRANCH`.
