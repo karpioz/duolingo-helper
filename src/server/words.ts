@@ -1,0 +1,124 @@
+import "server-only";
+import { and, asc, count, desc, eq, exists, ilike, or, sql, type SQL } from "drizzle-orm";
+import { db } from "@/db";
+import { examAnswers, tags, translations, wordTags, words } from "@/db/schema";
+
+export const COURSE = "es-en";
+export const PAGE_SIZE = 100;
+
+export type WordSort = "recent" | "alphabetical";
+
+export type WordRow = {
+  id: number;
+  text: string;
+  audioUrl: string | null;
+  translations: string[];
+  tagIds: number[];
+  correct: number;
+  wrong: number;
+};
+
+export type TagWithCount = { id: number; name: string; color: string | null; system: boolean; words: number };
+
+/**
+ * words.id, always table-qualified. Drizzle drops the table name in single-table selects, so a
+ * plain ${words.id} inside a correlated subquery would bind to the subquery's own "id" column.
+ */
+export const WORD_ID = sql.raw('"words"."id"');
+
+/** Array of the outer word's translations, primary first. */
+export const wordTranslations = () =>
+  sql<string[]>`coalesce((select array_agg(t.text order by t.position) from ${translations} t where t.word_id = ${WORD_ID}), '{}')`;
+
+/** Array of the outer word's tag ids. */
+export const wordTagIds = () =>
+  sql<number[]>`coalesce((select array_agg(wt.tag_id order by wt.tag_id) from ${wordTags} wt where wt.word_id = ${WORD_ID}), '{}')`;
+
+/** Accent- and case-insensitive sort key. */
+export const alphaKey = sql`unaccent(lower(${words.text}))`;
+
+function escapeLike(text: string) {
+  return text.replace(/[\\%_]/g, (c) => `\\${c}`);
+}
+
+export async function listWords(opts: { q?: string; sort?: WordSort; tagId?: number; page?: number }) {
+  const page = Math.max(1, opts.page ?? 1);
+  const filters: SQL[] = [eq(words.course, COURSE)];
+
+  const q = opts.q?.trim();
+  if (q) {
+    const pattern = `%${escapeLike(q)}%`;
+    filters.push(
+      or(
+        sql`unaccent(lower(${words.text})) like unaccent(lower(${pattern}))`,
+        exists(
+          db
+            .select({ one: sql`1` })
+            .from(translations)
+            .where(and(sql`${translations.wordId} = ${WORD_ID}`, ilike(translations.text, pattern))),
+        ),
+      )!,
+    );
+  }
+  if (opts.tagId) {
+    filters.push(
+      exists(
+        db
+          .select({ one: sql`1` })
+          .from(wordTags)
+          .where(and(sql`${wordTags.wordId} = ${WORD_ID}`, eq(wordTags.tagId, opts.tagId))),
+      ),
+    );
+  }
+
+  const where = and(...filters);
+  const order = opts.sort === "alphabetical" ? [asc(alphaKey)] : [sql`${words.duoRank} asc nulls last`, asc(words.id)];
+
+  const [rows, [{ total }]] = await Promise.all([
+    db
+      .select({
+        id: words.id,
+        text: words.text,
+        audioUrl: words.audioUrl,
+        translations: wordTranslations(),
+        tagIds: wordTagIds(),
+        correct: sql<number>`(select count(*)::int from ${examAnswers} a where a.word_id = ${WORD_ID} and a.is_correct)`,
+        wrong: sql<number>`(select count(*)::int from ${examAnswers} a where a.word_id = ${WORD_ID} and not a.is_correct)`,
+      })
+      .from(words)
+      .where(where)
+      .orderBy(...order)
+      .limit(PAGE_SIZE)
+      .offset((page - 1) * PAGE_SIZE),
+    db.select({ total: count() }).from(words).where(where),
+  ]);
+
+  return { rows: rows satisfies WordRow[], total, page, pages: Math.max(1, Math.ceil(total / PAGE_SIZE)) };
+}
+
+export async function listTags(): Promise<TagWithCount[]> {
+  return db
+    .select({
+      id: tags.id,
+      name: tags.name,
+      color: tags.color,
+      system: tags.system,
+      words: sql<number>`(select count(*)::int from ${wordTags} wt where wt.tag_id = ${tags.id})`,
+    })
+    .from(tags)
+    .orderBy(desc(tags.system), asc(tags.id));
+}
+
+export async function libraryStats() {
+  const [[w], [t], [missed]] = await Promise.all([
+    db.select({ n: count() }).from(words).where(eq(words.course, COURSE)),
+    db.select({ n: count() }).from(translations),
+    db.execute<{ n: number }>(sql`select count(*)::int as n from (${latestAnswers()}) x where not x.is_correct`).then((r) => r.rows),
+  ]);
+  return { words: w.n, translations: t.n, missed: missed.n };
+}
+
+/** Latest answer per word (any direction): word_id, is_correct, created_at. */
+export function latestAnswers() {
+  return sql`select distinct on (word_id) word_id, is_correct, created_at from ${examAnswers} order by word_id, created_at desc`;
+}

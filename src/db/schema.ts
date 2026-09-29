@@ -26,7 +26,7 @@ export const directionEnum = pgEnum("direction", ["source_to_target", "target_to
 export const examDirectionEnum = pgEnum("exam_direction", ["source_to_target", "target_to_source", "mixed"]);
 export const examModeEnum = pgEnum("exam_mode", ["typed", "choice", "match"]);
 /** Which words an exam draws from. */
-export const examSourceEnum = pgEnum("exam_source", ["recent", "alphabetical", "random", "tagged", "missed", "due"]);
+export const examSourceEnum = pgEnum("exam_source", ["recent", "alphabetical", "random", "tagged", "missed", "due", "retest"]);
 
 /**
  * A word or phrase in the learned language (e.g. Spanish "aprendiste").

@@ -1,60 +1,98 @@
-import { count } from "drizzle-orm";
+import Link from "next/link";
 import { connection } from "next/server";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { db } from "@/db";
-import { tags, translations, words } from "@/db/schema";
+import { recentExams } from "@/server/exams";
+import { libraryStats, listTags } from "@/server/words";
+import { describeExam } from "@/lib/exam-labels";
 
 export default async function Home() {
   await connection();
-
-  const [[wordCount], [translationCount], tagRows] = await Promise.all([
-    db.select({ n: count() }).from(words),
-    db.select({ n: count() }).from(translations),
-    db.select({ name: tags.name, color: tags.color }).from(tags).orderBy(tags.id),
-  ]);
+  const [stats, tags, exams] = await Promise.all([libraryStats(), listTags(), recentExams()]);
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-12">
-      <header className="space-y-1">
-        <h1 className="text-3xl font-semibold tracking-tight">Duolingo Helper</h1>
-        <p className="text-muted-foreground">Spanish vocabulary practice built from your Duolingo words.</p>
-      </header>
+    <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10">
+      <section className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-semibold tracking-tight">¡Hola!</h1>
+          <p className="text-muted-foreground">
+            {stats.words.toLocaleString()} Spanish words from Duolingo, ready to practise.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button size="lg" nativeButton={false} render={<Link href="/test" />}>
+            Test me
+          </Button>
+          <Button size="lg" variant="outline" nativeButton={false} render={<Link href="/words" />}>
+            Browse words
+          </Button>
+        </div>
+      </section>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Stat label="Words" value={stats.words} href="/words" />
+        <Stat label="Translations" value={stats.translations} />
+        {tags.map((t) => (
+          <Stat key={t.id} label={`Tagged ${t.name}`} value={t.words} href={`/words?tag=${t.id}`} color={t.color} />
+        ))}
+        <Stat label="Missed last time" value={stats.missed} />
+      </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Your library</CardTitle>
-          <CardDescription>
-            Connected to Neon branch <code className="font-mono">{process.env.NEON_BRANCH ?? "unknown"}</code>
-          </CardDescription>
+          <CardTitle>Recent tests</CardTitle>
+          {exams.length === 0 && <CardDescription>No tests yet. Start one with “Test me”.</CardDescription>}
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <Stat label="Words" value={wordCount.n} />
-            <Stat label="Translations" value={translationCount.n} />
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-muted-foreground">Tags:</span>
-            {tagRows.map((t) => (
-              <Badge key={t.name} variant="outline" style={t.color ? { borderColor: t.color, color: t.color } : undefined}>
-                {t.name}
-              </Badge>
-            ))}
-          </div>
-          {wordCount.n === 0 && (
-            <p className="text-sm text-muted-foreground">No words yet — run the Duolingo import to load your vocabulary.</p>
-          )}
-        </CardContent>
+        {exams.length > 0 && (
+          <CardContent>
+            <ul className="divide-y">
+              {exams.map((e) => {
+                const pct = Math.round((e.correct / e.size) * 100);
+                return (
+                  <li key={e.id}>
+                    <Link href={`/test/${e.id}/results`} className="flex items-center justify-between gap-4 py-2.5 hover:underline">
+                      <span className="text-sm">
+                        {describeExam(e.source, e.direction)}
+                        <span className="ml-2 text-muted-foreground">
+                          {e.startedAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                        </span>
+                      </span>
+                      <span className="text-sm font-medium tabular-nums">
+                        {e.correct}/{e.size} · {pct}%
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        )}
       </Card>
+
+      {stats.words === 0 && (
+        <p className="text-sm text-muted-foreground">
+          No words yet — see <Link className="underline" href="/import">Import</Link> to load your Duolingo vocabulary.
+        </p>
+      )}
     </main>
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-lg bg-muted p-4">
-      <div className="text-2xl font-semibold tabular-nums">{value.toLocaleString()}</div>
+function Stat({ label, value, href, color }: { label: string; value: number; href?: string; color?: string | null }) {
+  const body = (
+    <>
+      <div className="text-2xl font-semibold tabular-nums" style={color ? { color } : undefined}>
+        {value.toLocaleString()}
+      </div>
       <div className="text-sm text-muted-foreground">{label}</div>
-    </div>
+    </>
+  );
+  const cls = "rounded-xl bg-muted p-4";
+  return href ? (
+    <Link href={href} className={`${cls} transition-colors hover:bg-muted/70`}>
+      {body}
+    </Link>
+  ) : (
+    <div className={cls}>{body}</div>
   );
 }

@@ -1,0 +1,1 @@
+ALTER TYPE "public"."exam_source" ADD VALUE 'retest';
