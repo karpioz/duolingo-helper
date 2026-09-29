@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { displayAnswer } from "@/lib/answers";
+import { formatDue } from "@/lib/srs";
 import { cn } from "@/lib/utils";
 import type { AnswerResult, ExamQuestion } from "@/server/exams";
 
@@ -34,6 +35,7 @@ export function TestRunner({
   const [value, setValue] = useState("");
   const [phase, setPhase] = useState<Phase>("answering");
   const [result, setResult] = useState<AnswerResult | null>(null);
+  const [nextReview, setNextReview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [correct, setCorrect] = useState(startCorrect);
   const [tagState, setTagState] = useState<Record<number, number[]>>(() =>
@@ -95,6 +97,7 @@ export function TestRunner({
         return;
       }
       setResult(res.result);
+      setNextReview(formatDue(new Date(res.result.nextDue), new Date()));
       if (res.result.kind !== "wrong") setCorrect((c) => c + 1);
       setPhase("feedback");
       if (answerInSpanish) playAudio(question.audioUrl);
@@ -199,7 +202,7 @@ export function TestRunner({
         {error && <p className="text-center text-sm text-destructive">{error}</p>}
 
         {phase === "feedback" && result && (
-          <Feedback result={result} given={value}>
+          <Feedback result={result} given={value} nextReview={nextReview}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-1.5">
                 <span className="text-xs text-muted-foreground">Tag:</span>
@@ -225,7 +228,17 @@ export function TestRunner({
   );
 }
 
-function Feedback({ result, given, children }: { result: AnswerResult; given: string; children: React.ReactNode }) {
+function Feedback({
+  result,
+  given,
+  nextReview,
+  children,
+}: {
+  result: AnswerResult;
+  given: string;
+  nextReview: string | null;
+  children: React.ReactNode;
+}) {
   const tone = {
     exact: { title: "Correct!", cls: "border-green-600/30 bg-green-600/10" },
     almost: { title: "Almost — watch the spelling", cls: "border-amber-500/40 bg-amber-500/10" },
@@ -234,7 +247,10 @@ function Feedback({ result, given, children }: { result: AnswerResult; given: st
 
   return (
     <div className={cn("space-y-3 rounded-xl border p-4", tone.cls)} role="status">
-      <p className="font-semibold">{tone.title}</p>
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="font-semibold">{tone.title}</p>
+        {nextReview && <span className="text-xs text-muted-foreground">Next review {nextReview}</span>}
+      </div>
       {result.kind === "almost" && result.matched && (
         <p className="text-sm">
           Correct spelling: <strong>{displayAnswer(result.matched)}</strong>

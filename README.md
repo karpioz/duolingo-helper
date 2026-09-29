@@ -32,3 +32,9 @@ and review history. Import is disabled in production until sign-in is added.
 - Migrations use `DATABASE_URL_UNPOOLED` (direct); the app uses `DATABASE_URL` (pooled).
 - Neon branches: `production` (deployed app) and `dev` (local work, never expires).
 - `npm run db:studio` opens Drizzle Studio to browse data.
+
+## Spaced repetition
+
+Every answer (typed or match) is an FSRS review of that word in that direction: wrong → back
+tomorrow, typo/missing accent → *Hard*, correct → *Good*. `npm run srs:rebuild` replays all answers
+to rebuild the schedule (run it after changing the scheduler settings in `src/lib/srs.ts`).

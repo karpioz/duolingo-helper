@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 import { ActivityCalendar } from "@/components/charts/activity-calendar";
+import { ForecastChart } from "@/components/charts/forecast-chart";
 import { ScoreChart } from "@/components/charts/score-chart";
 import { TagToggle } from "@/components/tag-toggle";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import {
   testScores,
   totals,
 } from "@/server/stats";
+import { dueCounts, reviewForecast } from "@/server/review";
 import { listTags } from "@/server/words";
 
 export const metadata: Metadata = { title: "Analytics · Duolingo Helper" };
@@ -25,7 +27,7 @@ const pct = (part: number, whole: number) => (whole ? Math.round((part / whole) 
 
 export default async function AnalyticsPage() {
   await connection();
-  const [{ activity, today }, t, directions, tests, cov, hard, tags] = await Promise.all([
+  const [{ activity, today }, t, directions, tests, cov, hard, tags, due, forecast] = await Promise.all([
     dailyActivity(),
     totals(),
     accuracyByDirection(),
@@ -33,6 +35,8 @@ export default async function AnalyticsPage() {
     coverage(),
     hardestWords(),
     listTags(),
+    dueCounts(),
+    reviewForecast(),
   ]);
   const streak = streaks(activity, today);
   const systemTags = tags.filter((tag) => tag.system).map(({ id, name, color }) => ({ id, name, color }));
@@ -113,6 +117,17 @@ export default async function AnalyticsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardContent className="space-y-4">
+          <ForecastChart days={forecast} />
+          {due.total > 0 && (
+            <Button size="sm" nativeButton={false} render={<Link href="/test?source=due" />}>
+              Review {due.total} due word{due.total === 1 ? "" : "s"} now
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

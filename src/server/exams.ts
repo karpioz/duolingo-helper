@@ -2,9 +2,11 @@ import "server-only";
 import { and, asc, desc, eq, exists, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { examAnswers, examSessions, translations, wordTags, words } from "@/db/schema";
+import { examAnswers, examSessions, reviewStates, translations, wordTags, words } from "@/db/schema";
 import { checkAnswer, type MatchKind } from "@/lib/answers";
 import { buildBoards, pickLabel } from "@/lib/match";
+import { gradeFor } from "@/lib/srs";
+import { applyReview } from "./review";
 import { COURSE, WORD_ID, alphaKey, latestAnswers, wordTagIds, wordTranslations } from "./words";
 
 export type Direction = "source_to_target" | "target_to_source";
@@ -12,7 +14,7 @@ export type Direction = "source_to_target" | "target_to_source";
 export const examOptionsSchema = z.object({
   mode: z.enum(["typed", "match"]).default("typed"),
   count: z.coerce.number().int().min(1).max(200),
-  source: z.enum(["recent", "alphabetical", "random", "tagged", "missed", "retest"]),
+  source: z.enum(["recent", "alphabetical", "random", "tagged", "missed", "due", "retest"]),
   direction: z.enum(["source_to_target", "target_to_source", "mixed"]),
   lenient: z.boolean().default(true),
   tagIds: z.array(z.number().int()).default([]),
@@ -85,16 +87,37 @@ async function pickWordIds(o: ExamOptions): Promise<number[]> {
       );
       return res.rows.map((r) => r.word_id);
     }
+    case "due":
+      return (await dueWords(o)).map((d) => d.wordId);
     case "retest":
       return o.wordIds.slice(0, o.count);
   }
+}
+
+/**
+ * Words due for review, most overdue first, one entry per word (its most overdue direction).
+ * A fixed exam direction only considers that direction.
+ */
+async function dueWords(o: ExamOptions): Promise<{ wordId: number; direction: Direction }[]> {
+  const dir = o.direction === "mixed" ? sql`true` : sql`rs.direction = ${o.direction}`;
+  const res = await db.execute<{ word_id: number; direction: Direction }>(sql`
+    select word_id, direction from (
+      select distinct on (rs.word_id) rs.word_id, rs.direction, rs.due
+      from ${reviewStates} rs join ${words} w on w.id = rs.word_id
+      where w.course = ${COURSE} and rs.due <= now() and ${dir}
+      order by rs.word_id, rs.due
+    ) x order by due limit ${o.count}`);
+  return res.rows.map((r) => ({ wordId: r.word_id, direction: r.direction }));
 }
 
 const randomDirection = (): Direction => (Math.random() < 0.5 ? "source_to_target" : "target_to_source");
 
 /** Creates an exam session; returns its id, or null if no words match. */
 export async function createExam(o: ExamOptions): Promise<number | null> {
-  const wordIds = shuffle(await pickWordIds(o));
+  // Due reviews keep their order (most overdue first) and the direction that is due.
+  const due = o.source === "due" ? await dueWords(o) : null;
+  const dueDirection = new Map(due?.map((d) => [d.wordId, d.direction]));
+  const wordIds = due ? due.map((d) => d.wordId) : shuffle(await pickWordIds(o));
   if (wordIds.length === 0) return null;
   const fixed = o.direction === "mixed" ? null : o.direction;
 
@@ -114,7 +137,7 @@ export async function createExam(o: ExamOptions): Promise<number | null> {
       return board.map((w) => ({ wordId: w.id, direction }));
     });
   } else {
-    questions = wordIds.map((wordId) => ({ wordId, direction: fixed ?? randomDirection() }));
+    questions = wordIds.map((wordId) => ({ wordId, direction: dueDirection.get(wordId) ?? fixed ?? randomDirection() }));
   }
 
   const options: StoredOptions = { lenient: o.lenient, tagIds: o.tagIds, startLetter: o.startLetter, questions, boards };
@@ -201,6 +224,8 @@ export type AnswerResult = {
   word: string;
   translations: string[];
   isLast: boolean;
+  /** When this word comes back for review in this direction (ISO). */
+  nextDue: string;
 };
 
 export async function recordAnswer(sessionId: number, index: number, given: string, responseMs: number | null) {
@@ -228,7 +253,7 @@ export async function recordAnswer(sessionId: number, index: number, given: stri
   const isCorrect = check.kind !== "wrong";
   const isLast = index === exam.questions.length - 1;
 
-  await db.transaction(async (tx) => {
+  const nextDue = await db.transaction(async (tx) => {
     await tx.insert(examAnswers).values({
       sessionId,
       wordId: question.wordId,
@@ -246,6 +271,13 @@ export async function recordAnswer(sessionId: number, index: number, given: stri
     if (Object.keys(changes).length > 0) {
       await tx.update(examSessions).set(changes).where(eq(examSessions.id, sessionId));
     }
+    return applyReview(tx, {
+      wordId: question.wordId,
+      direction: question.direction,
+      grade: gradeFor(check.kind),
+      correct: isCorrect,
+      at: new Date(),
+    });
   });
 
   return {
@@ -255,6 +287,7 @@ export async function recordAnswer(sessionId: number, index: number, given: stri
     word: word.text,
     translations: word.translations,
     isLast,
+    nextDue: nextDue.toISOString(),
   } satisfies AnswerResult;
 }
 
@@ -398,6 +431,11 @@ export async function recordMatchBoard(
     };
     if (Object.keys(changes).length > 0) {
       await tx.update(examSessions).set(changes).where(eq(examSessions.id, sessionId));
+    }
+    const at = new Date();
+    for (const r of results) {
+      const ok = r.mistakes === 0;
+      await applyReview(tx, { wordId: r.wordId, direction: board.direction, grade: gradeFor(ok ? "exact" : "wrong"), correct: ok, at });
     }
   });
 

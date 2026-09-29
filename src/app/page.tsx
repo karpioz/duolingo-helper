@@ -3,12 +3,13 @@ import { connection } from "next/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { recentExams } from "@/server/exams";
+import { dueCounts } from "@/server/review";
 import { libraryStats, listTags } from "@/server/words";
 import { describeExam } from "@/lib/exam-labels";
 
 export default async function Home() {
   await connection();
-  const [stats, tags, exams] = await Promise.all([libraryStats(), listTags(), recentExams()]);
+  const [stats, tags, exams, due] = await Promise.all([libraryStats(), listTags(), recentExams(), dueCounts()]);
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10">
@@ -28,6 +29,22 @@ export default async function Home() {
           </Button>
         </div>
       </section>
+
+      {due.total > 0 && (
+        <div className="flex flex-col gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-medium">
+              {due.total} word{due.total === 1 ? "" : "s"} due for review
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Spaced repetition brings back words just before you’d forget them.
+            </p>
+          </div>
+          <Button nativeButton={false} render={<Link href="/test?source=due" />}>
+            Review now
+          </Button>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat label="Words" value={stats.words} href="/words" />

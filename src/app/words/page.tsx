@@ -76,6 +76,14 @@ export default async function WordsPage({ searchParams }: PageProps<"/words">) {
                   {w.translations.map(displayAnswer).join(", ")}
                 </div>
               </div>
+              {w.due && (
+                <span
+                  className={w.dueNow ? "text-xs font-medium text-amber-600 dark:text-amber-400" : "hidden text-xs text-muted-foreground sm:inline"}
+                  title="Next spaced-repetition review"
+                >
+                  {w.dueNow ? "Due now" : `Review ${w.due}`}
+                </span>
+              )}
               {(w.correct > 0 || w.wrong > 0) && (
                 <span className="hidden text-xs text-muted-foreground tabular-nums sm:inline" title="Correct / wrong answers">
                   ✓{w.correct} ✗{w.wrong}

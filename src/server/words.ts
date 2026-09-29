@@ -1,7 +1,8 @@
 import "server-only";
 import { and, asc, count, desc, eq, exists, ilike, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
-import { examAnswers, tags, translations, wordTags, words } from "@/db/schema";
+import { examAnswers, reviewStates, tags, translations, wordTags, words } from "@/db/schema";
+import { formatDue } from "@/lib/srs";
 
 export const COURSE = "es-en";
 export const PAGE_SIZE = 100;
@@ -16,6 +17,9 @@ export type WordRow = {
   tagIds: number[];
   correct: number;
   wrong: number;
+  /** Next review across both directions: "now", "in 3 d", … or null if never practised. */
+  due: string | null;
+  dueNow: boolean;
 };
 
 export type TagWithCount = { id: number; name: string; color: string | null; system: boolean; words: number };
@@ -84,6 +88,7 @@ export async function listWords(opts: { q?: string; sort?: WordSort; tagId?: num
         tagIds: wordTagIds(),
         correct: sql<number>`(select count(*)::int from ${examAnswers} a where a.word_id = ${WORD_ID} and a.is_correct)`,
         wrong: sql<number>`(select count(*)::int from ${examAnswers} a where a.word_id = ${WORD_ID} and not a.is_correct)`,
+        nextDue: sql<Date | null>`(select min(rs.due) from ${reviewStates} rs where rs.word_id = ${WORD_ID})`,
       })
       .from(words)
       .where(where)
@@ -93,7 +98,12 @@ export async function listWords(opts: { q?: string; sort?: WordSort; tagId?: num
     db.select({ total: count() }).from(words).where(where),
   ]);
 
-  return { rows: rows satisfies WordRow[], total, page, pages: Math.max(1, Math.ceil(total / PAGE_SIZE)) };
+  const now = new Date();
+  const withDue: WordRow[] = rows.map(({ nextDue, ...r }) => {
+    const due = nextDue ? new Date(nextDue) : null;
+    return { ...r, due: due ? formatDue(due, now) : null, dueNow: !!due && due <= now };
+  });
+  return { rows: withDue, total, page, pages: Math.max(1, Math.ceil(total / PAGE_SIZE)) };
 }
 
 export async function listTags(): Promise<TagWithCount[]> {

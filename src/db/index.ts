@@ -15,3 +15,4 @@ if (process.env.NODE_ENV !== "production") globalForDb.pool = pool;
 attachDatabasePool(pool);
 
 export const db = drizzle({ client: pool, schema, casing: "snake_case" });
+export { pool };

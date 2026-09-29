@@ -1,18 +1,26 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { dueCounts } from "@/server/review";
 import { libraryStats, listTags } from "@/server/words";
 import { TestSetupForm } from "./test-setup-form";
 
 export const metadata: Metadata = { title: "Test me · Duolingo Helper" };
 
-export default async function TestSetupPage() {
+export default async function TestSetupPage({ searchParams }: PageProps<"/test">) {
   await connection();
-  const [stats, tags] = await Promise.all([libraryStats(), listTags()]);
+  const [stats, tags, due, sp] = await Promise.all([libraryStats(), listTags(), dueCounts(), searchParams]);
+  const initialSource = sp.source === "due" ? "due" : undefined;
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 py-8">
       <h1 className="text-2xl font-semibold tracking-tight">Test me</h1>
-      <TestSetupForm totalWords={stats.words} missedWords={stats.missed} tags={tags} />
+      <TestSetupForm
+        totalWords={stats.words}
+        missedWords={stats.missed}
+        due={due}
+        tags={tags}
+        initialSource={initialSource}
+      />
     </main>
   );
 }

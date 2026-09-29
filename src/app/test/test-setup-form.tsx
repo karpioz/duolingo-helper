@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import type { TagWithCount } from "@/server/words";
 
-type Source = "recent" | "alphabetical" | "random" | "tagged" | "missed";
+type Source = "due" | "recent" | "alphabetical" | "random" | "tagged" | "missed";
 type Direction = "source_to_target" | "target_to_source" | "mixed";
 type Mode = "typed" | "match";
 
@@ -21,6 +21,7 @@ const MODES: { value: Mode; label: string; hint: string }[] = [
 const COUNTS = [10, 20] as const;
 
 const SOURCES: { value: Source; label: string; hint: string }[] = [
+  { value: "due", label: "Due for review", hint: "Spaced repetition: most overdue first" },
   { value: "recent", label: "Recently learned", hint: "Your newest Duolingo words" },
   { value: "alphabetical", label: "Alphabetical", hint: "In A–Z order" },
   { value: "random", label: "Random", hint: "Any words from your list" },
@@ -37,16 +38,20 @@ const DIRECTIONS: { value: Direction; label: string; matchLabel: string }[] = [
 export function TestSetupForm({
   totalWords,
   missedWords,
+  due,
   tags,
+  initialSource,
 }: {
   totalWords: number;
   missedWords: number;
+  due: { total: number; source_to_target: number; target_to_source: number };
   tags: TagWithCount[];
+  initialSource?: Source;
 }) {
   const [mode, setMode] = useState<Mode>("typed");
   const [countChoice, setCountChoice] = useState<number | "custom">(10);
   const [customCount, setCustomCount] = useState("30");
-  const [source, setSource] = useState<Source>("recent");
+  const [source, setSource] = useState<Source>(initialSource ?? (due.total > 0 ? "due" : "recent"));
   const [tagIds, setTagIds] = useState<number[]>(() => tags.filter((t) => t.system).map((t) => t.id));
   const [startLetter, setStartLetter] = useState("");
   const [direction, setDirection] = useState<Direction>("source_to_target");
@@ -60,7 +65,11 @@ export function TestSetupForm({
       ? tags.filter((t) => tagIds.includes(t.id)).reduce((n, t) => n + t.words, 0)
       : source === "missed"
         ? missedWords
-        : totalWords;
+        : source === "due"
+          ? direction === "mixed"
+            ? due.total
+            : due[direction]
+          : totalWords;
   const countValid = Number.isInteger(count) && count >= 1 && count <= 200;
 
   function submit(e: { preventDefault(): void }) {

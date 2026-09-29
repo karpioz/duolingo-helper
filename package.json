@@ -11,7 +11,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "srs:rebuild": "tsx --conditions=react-server dev/scripts/rebuild-review-states.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
