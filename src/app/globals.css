@@ -72,6 +72,16 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
+  /* Data viz (validated with the dataviz skill: green ordinal ramp, light surface) */
+  --viz-empty: oklch(0.94 0 0);
+  --viz-1: #6cc47a;
+  --viz-2: #3fa653;
+  --viz-3: #23843a;
+  --viz-4: #145c27;
+  --viz-series-1: #2a78d6;
+  --viz-good: #0ca30c;
+  --viz-critical: #d03b3b;
+  --viz-neutral: oklch(0.87 0 0);
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -107,6 +117,16 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
+  /* Data viz, dark: ramp brightens with magnitude */
+  --viz-empty: oklch(0.27 0 0);
+  --viz-1: #1d5c2c;
+  --viz-2: #26803b;
+  --viz-3: #36a650;
+  --viz-4: #5fd07a;
+  --viz-series-1: #3987e5;
+  --viz-good: #0ca30c;
+  --viz-critical: #d03b3b;
+  --viz-neutral: oklch(0.37 0 0);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
