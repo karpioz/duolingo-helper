@@ -49,7 +49,7 @@ export default async function ResultsPage({ params }: PageProps<"/test/[id]/resu
           <RetestButton
             wordIds={missedIds}
             direction={session.direction}
-            mode={session.mode === "match" ? "match" : "typed"}
+            mode={session.mode}
             lenient={lenient}
             label={`Retest ${missedIds.length} missed`}
           />
@@ -84,7 +84,8 @@ export default async function ResultsPage({ params }: PageProps<"/test/[id]/resu
                 <div className="text-sm text-red-600 dark:text-red-400">
                   {a.given?.trim() ? (
                     <>
-                      You wrote: <span className="line-through">{a.given}</span>
+                      {session.mode === "choice" ? "You picked" : "You wrote"}:{" "}
+                      <span className="line-through">{a.given}</span>
                     </>
                   ) : session.mode === "match" ? (
                     "Mismatched at least once"

@@ -39,7 +39,24 @@ export async function submitAnswer(
 ): Promise<{ ok: true; result: AnswerResult } | { ok: false; error: string }> {
   try {
     await assertUser();
-    const result = await recordAnswer(sessionId, index, String(given ?? ""), responseMs);
+    const result = await recordAnswer(sessionId, index, { text: String(given ?? "") }, responseMs);
+    return { ok: true, result };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Could not save the answer." };
+  }
+}
+
+/** Multiple choice: `choice` is the index of the picked option, or null for "I don't know". */
+export async function submitChoice(
+  sessionId: number,
+  index: number,
+  choice: number | null,
+  responseMs: number | null,
+): Promise<{ ok: true; result: AnswerResult } | { ok: false; error: string }> {
+  try {
+    await assertUser();
+    const picked = z.number().int().min(0).max(9).nullable().parse(choice);
+    const result = await recordAnswer(sessionId, index, { choice: picked }, responseMs);
     return { ok: true, result };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Could not save the answer." };

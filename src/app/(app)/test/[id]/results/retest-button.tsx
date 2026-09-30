@@ -13,7 +13,7 @@ export function RetestButton({
 }: {
   wordIds: number[];
   direction: "source_to_target" | "target_to_source" | "mixed";
-  mode: "typed" | "match";
+  mode: "typed" | "choice" | "match";
   lenient: boolean;
   label: string;
 }) {

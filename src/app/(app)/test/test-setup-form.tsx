@@ -11,10 +11,11 @@ import type { TagWithCount } from "@/server/words";
 
 type Source = "due" | "recent" | "alphabetical" | "random" | "tagged" | "missed";
 type Direction = "source_to_target" | "target_to_source" | "mixed";
-type Mode = "typed" | "match";
+type Mode = "typed" | "choice" | "match";
 
 const MODES: { value: Mode; label: string; hint: string }[] = [
   { value: "typed", label: "Type answers", hint: "Write the translation" },
+  { value: "choice", label: "Multiple choice", hint: "Pick the translation from 4 options" },
   { value: "match", label: "Match pairs", hint: "Pair Spanish and English tiles, 5 at a time" },
 ];
 
@@ -84,7 +85,7 @@ export function TestSetupForm({
   return (
     <form onSubmit={submit} className="flex flex-col gap-7">
       <Field label="Test type">
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid gap-2 sm:grid-cols-3">
           {MODES.map((m) => (
             <OptionCard key={m.value} selected={mode === m.value} onClick={() => setMode(m.value)} label={m.label} hint={m.hint} />
           ))}
@@ -163,7 +164,7 @@ export function TestSetupForm({
         </div>
       </Field>
 
-      <div className={cn("flex items-start gap-3", mode === "match" && "hidden")}>
+      <div className={cn("flex items-start gap-3", mode !== "typed" && "hidden")}>
         <Switch id="lenient" checked={lenient} onCheckedChange={setLenient} />
         <div className="space-y-0.5">
           <Label htmlFor="lenient">Lenient checking</Label>

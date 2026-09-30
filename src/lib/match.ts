@@ -16,11 +16,11 @@ export function pickLabel(translations: string[]): string {
 }
 
 /** Normalized forms of all translations, used to detect overlaps between words. */
-function signature(translations: string[]): Set<string> {
+export function signature(translations: string[]): Set<string> {
   return new Set(translations.flatMap(variants));
 }
 
-function overlaps(a: Set<string>, b: Set<string>) {
+export function overlaps(a: Set<string>, b: Set<string>) {
   for (const v of a) if (b.has(v)) return true;
   return false;
 }

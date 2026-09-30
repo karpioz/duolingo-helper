@@ -3,7 +3,8 @@ import { and, asc, desc, eq, exists, inArray, isNotNull, ne, sql } from "drizzle
 import { z } from "zod";
 import { db } from "@/db";
 import { examAnswers, examSessions, reviewStates, translations, wordTags, words } from "@/db/schema";
-import { checkAnswer, type MatchKind } from "@/lib/answers";
+import { checkAnswer, type CheckResult, type MatchKind } from "@/lib/answers";
+import { optionLabel, pickDistractors } from "@/lib/choice";
 import { buildBoards, pickLabel } from "@/lib/match";
 import { gradeFor } from "@/lib/srs";
 import { applyReview } from "./review";
@@ -12,7 +13,7 @@ import { COURSE, WORD_ID, alphaKey, latestAnswers, wordTagIds, wordTranslations 
 export type Direction = "source_to_target" | "target_to_source";
 
 export const examOptionsSchema = z.object({
-  mode: z.enum(["typed", "match"]).default("typed"),
+  mode: z.enum(["typed", "choice", "match"]).default("typed"),
   count: z.coerce.number().int().min(1).max(200),
   source: z.enum(["recent", "alphabetical", "random", "tagged", "missed", "due", "retest"]),
   direction: z.enum(["source_to_target", "target_to_source", "mixed"]),
@@ -30,7 +31,12 @@ export const examOptionsSchema = z.object({
 });
 export type ExamOptions = z.infer<typeof examOptionsSchema>;
 
-type Question = { wordId: number; direction: Direction };
+type Question = {
+  wordId: number;
+  direction: Direction;
+  /** Multiple choice: word ids of the options in display order (the answer is one of them). */
+  choices?: number[];
+};
 type StoredOptions = Pick<ExamOptions, "lenient" | "tagIds" | "startLetter"> & {
   questions: Question[];
   /** Match mode: number of pairs on each board, in question order. */
@@ -138,6 +144,7 @@ export async function createExam(o: ExamOptions): Promise<number | null> {
     });
   } else {
     questions = wordIds.map((wordId) => ({ wordId, direction: dueDirection.get(wordId) ?? fixed ?? randomDirection() }));
+    if (o.mode === "choice") questions = await withChoices(questions);
   }
 
   const options: StoredOptions = { lenient: o.lenient, tagIds: o.tagIds, startLetter: o.startLetter, questions, boards };
@@ -148,6 +155,21 @@ export async function createExam(o: ExamOptions): Promise<number | null> {
   return session.id;
 }
 
+/** Adds options to each question, drawn from the whole course so there's plenty to choose from. */
+async function withChoices(questions: Question[]): Promise<Question[]> {
+  const pool = await db
+    .select({ id: words.id, text: words.text, translations: wordTranslations() })
+    .from(words)
+    .where(eq(words.course, COURSE));
+  const byId = new Map(pool.map((w) => [w.id, w]));
+  return questions
+    .filter((q) => byId.has(q.wordId))
+    .map((q) => {
+      const distractors = pickDistractors(byId.get(q.wordId)!, pool, q.direction === "target_to_source");
+      return { ...q, choices: shuffle([q.wordId, ...distractors]) };
+    });
+}
+
 export type ExamQuestion = {
   wordId: number;
   direction: Direction;
@@ -155,6 +177,8 @@ export type ExamQuestion = {
   prompt: string[];
   audioUrl: string | null;
   tagIds: number[];
+  /** Multiple choice: the options' text, in display order. */
+  choices?: string[];
 };
 
 export async function getExam(id: number) {
@@ -162,7 +186,7 @@ export async function getExam(id: number) {
   if (!session) return null;
   const options = session.options as StoredOptions;
 
-  const wordIds = options.questions.map((q) => q.wordId);
+  const wordIds = [...new Set(options.questions.flatMap((q) => [q.wordId, ...(q.choices ?? [])]))];
   const wordRows = await db
     .select({
       id: words.id,
@@ -175,25 +199,28 @@ export async function getExam(id: number) {
     .where(inArray(words.id, wordIds));
   const byId = new Map(wordRows.map((w) => [w.id, w]));
 
-  const questions: ExamQuestion[] = options.questions
-    .filter((q) => byId.has(q.wordId))
-    .map((q) => {
-      const w = byId.get(q.wordId)!;
-      return {
-        wordId: q.wordId,
-        direction: q.direction,
-        prompt: q.direction === "source_to_target" ? [w.text] : w.translations,
-        audioUrl: w.audioUrl,
-        tagIds: w.tagIds,
-      };
-    });
+  const kept = options.questions.filter((q) => byId.has(q.wordId));
+  /** Index of the right option per question (multiple choice). Server-only: not sent to the page. */
+  const choiceAnswers = kept.map((q) => q.choices?.filter((id) => byId.has(id)).indexOf(q.wordId));
+  const questions: ExamQuestion[] = kept.map((q) => {
+    const w = byId.get(q.wordId)!;
+    const answerInSpanish = q.direction === "target_to_source";
+    return {
+      wordId: q.wordId,
+      direction: q.direction,
+      prompt: answerInSpanish ? w.translations : [w.text],
+      audioUrl: w.audioUrl,
+      tagIds: w.tagIds,
+      choices: q.choices?.filter((id) => byId.has(id)).map((id) => optionLabel(byId.get(id)!, answerInSpanish)),
+    };
+  });
 
   const [{ answered }] = await db
     .select({ answered: sql<number>`count(*)::int` })
     .from(examAnswers)
     .where(eq(examAnswers.sessionId, id));
 
-  return { session, lenient: options.lenient, questions, answered };
+  return { session, lenient: options.lenient, questions, choiceAnswers, answered };
 }
 
 /**
@@ -224,11 +251,22 @@ export type AnswerResult = {
   word: string;
   translations: string[];
   isLast: boolean;
+  /** Multiple choice: index of the right option. */
+  correctChoice?: number;
   /** When this word comes back for review in this direction (ISO). */
   nextDue: string;
 };
 
-export async function recordAnswer(sessionId: number, index: number, given: string, responseMs: number | null) {
+/**
+ * Saves the answer to question `index`. Typed tests pass the text; multiple choice passes the
+ * index of the chosen option (null = "I don't know").
+ */
+export async function recordAnswer(
+  sessionId: number,
+  index: number,
+  answer: { text: string } | { choice: number | null },
+  responseMs: number | null,
+) {
   const exam = await getExam(sessionId);
   if (!exam) throw new Error("Exam not found.");
   if (index !== exam.answered) throw new Error("Answer out of order: reload the page.");
@@ -240,16 +278,26 @@ export async function recordAnswer(sessionId: number, index: number, given: stri
     .from(words)
     .where(eq(words.id, question.wordId));
 
-  let accepted: string[];
+  let given: string;
+  let check: CheckResult;
   let alternatives: string[] = [];
-  if (question.direction === "source_to_target") {
-    accepted = word.translations;
+  let correctChoice: number | undefined;
+  if ("choice" in answer) {
+    if (!question.choices) throw new Error("Not a multiple choice question.");
+    correctChoice = exam.choiceAnswers[index];
+    given = answer.choice === null ? "" : (question.choices[answer.choice] ?? "");
+    check = { kind: answer.choice === correctChoice ? "exact" : "wrong" };
   } else {
-    alternatives = await alternativeWords(question.wordId);
-    accepted = [word.text, ...alternatives];
+    given = answer.text;
+    let accepted: string[];
+    if (question.direction === "source_to_target") {
+      accepted = word.translations;
+    } else {
+      alternatives = await alternativeWords(question.wordId);
+      accepted = [word.text, ...alternatives];
+    }
+    check = checkAnswer(given, accepted, { lenient: exam.lenient });
   }
-
-  const check = checkAnswer(given, accepted, { lenient: exam.lenient });
   const isCorrect = check.kind !== "wrong";
   const isLast = index === exam.questions.length - 1;
 
@@ -287,6 +335,7 @@ export async function recordAnswer(sessionId: number, index: number, given: stri
     word: word.text,
     translations: word.translations,
     isLast,
+    correctChoice,
     nextDue: nextDue.toISOString(),
   } satisfies AnswerResult;
 }

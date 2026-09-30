@@ -16,5 +16,7 @@ export const DIRECTION_LABELS: Record<string, string> = {
 
 export function describeExam(source: string, direction: string, mode?: string) {
   const base = `${SOURCE_LABELS[source] ?? source} · ${DIRECTION_LABELS[direction] ?? direction}`;
-  return mode === "match" ? `Match pairs · ${base}` : base;
+  if (mode === "match") return `Match pairs · ${base}`;
+  if (mode === "choice") return `Multiple choice · ${base}`;
+  return base;
 }

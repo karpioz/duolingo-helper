@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { submitAnswer, toggleWordTag } from "@/app/actions";
+import { submitAnswer, submitChoice, toggleWordTag } from "@/app/actions";
 import { AudioButton, playAudio } from "@/components/audio-button";
 import { TagToggle, type TagInfo } from "@/components/tag-toggle";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,8 @@ export function TestRunner({
   const [nextReview, setNextReview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [correct, setCorrect] = useState(startCorrect);
+  /** Multiple choice: the option picked (null = "I don't know"). */
+  const [picked, setPicked] = useState<number | null>(null);
   const [tagState, setTagState] = useState<Record<number, number[]>>(() =>
     Object.fromEntries(questions.map((q) => [q.wordId, q.tagIds])),
   );
@@ -47,6 +49,7 @@ export function TestRunner({
 
   const question = questions[index];
   const answerInSpanish = question.direction === "target_to_source";
+  const choices = question.choices;
 
   // New question: reset timer, focus input, and play the Spanish word when it is the prompt.
   useEffect(() => {
@@ -68,11 +71,19 @@ export function TestRunner({
     startTransition(() => toggleWordTag(question.wordId, tag.id, on));
   }
 
-  // Keyboard shortcuts while feedback is shown: first letter of each tag toggles it.
+  // Keyboard shortcuts: 1–4 pick an option; while feedback is shown, a tag's first letter toggles it.
   useEffect(() => {
-    if (phase !== "feedback") return;
+    if (phase === "checking") return;
     function onKey(e: KeyboardEvent) {
       if (e.ctrlKey || e.metaKey || e.altKey || e.target instanceof HTMLInputElement) return;
+      if (phase === "answering") {
+        const n = Number(e.key);
+        if (choices && Number.isInteger(n) && n >= 1 && n <= choices.length) {
+          e.preventDefault();
+          choose(n - 1);
+        }
+        return;
+      }
       const tag = tags.find((t) => t.name[0]?.toLowerCase() === e.key.toLowerCase());
       if (tag) {
         e.preventDefault();
@@ -84,12 +95,22 @@ export function TestRunner({
   });
 
   function submit(given: string) {
+    send((ms) => submitAnswer(examId, index, given, ms));
+  }
+
+  function choose(choice: number | null) {
+    if (phase !== "answering") return;
+    setPicked(choice);
+    send((ms) => submitChoice(examId, index, choice, ms));
+  }
+
+  function send(save: (ms: number) => ReturnType<typeof submitAnswer>) {
     if (phase !== "answering") return;
     setPhase("checking");
     setError(null);
     const ms = Math.round(performance.now() - shownAt.current);
     startTransition(async () => {
-      const res = await submitAnswer(examId, index, given, ms);
+      const res = await save(ms);
       if (!res.ok) {
         setError(res.error);
         setPhase("answering");
@@ -111,6 +132,7 @@ export function TestRunner({
     }
     setIndex((i) => i + 1);
     setValue("");
+    setPicked(null);
     setResult(null);
     setPhase("answering");
   }
@@ -162,25 +184,36 @@ export function TestRunner({
         onSubmit={(e) => {
           e.preventDefault();
           if (phase === "feedback") next();
-          else submit(value);
+          else if (!choices) submit(value);
         }}
         className="flex flex-col gap-3"
       >
-        <Input
-          ref={inputRef}
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          disabled={phase !== "answering"}
-          placeholder={answerInSpanish ? "Escribe en español…" : "Type in English…"}
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="off"
-          spellCheck={false}
-          lang={answerInSpanish ? "es" : "en"}
-          className="h-12 text-center text-lg"
-          aria-label="Your answer"
-        />
-        {answerInSpanish && phase === "answering" && (
+        {choices ? (
+          <ChoiceOptions
+            choices={choices}
+            picked={picked}
+            correctChoice={result?.correctChoice}
+            disabled={phase !== "answering"}
+            lang={answerInSpanish ? "es" : "en"}
+            onChoose={choose}
+          />
+        ) : (
+          <Input
+            ref={inputRef}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            disabled={phase !== "answering"}
+            placeholder={answerInSpanish ? "Escribe en español…" : "Type in English…"}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            lang={answerInSpanish ? "es" : "en"}
+            className="h-12 text-center text-lg"
+            aria-label="Your answer"
+          />
+        )}
+        {!choices && answerInSpanish && phase === "answering" && (
           <div className="flex flex-wrap justify-center gap-1">
             {ACCENTS.map((ch) => (
               <Button key={ch} type="button" variant="outline" size="icon-sm" onClick={() => insertAccent(ch)}>
@@ -191,10 +224,18 @@ export function TestRunner({
         )}
         {phase !== "feedback" && (
           <div className="flex justify-center gap-2">
-            <Button type="submit" size="lg" disabled={phase === "checking"}>
-              {phase === "checking" ? "Checking…" : "Check"}
-            </Button>
-            <Button type="button" size="lg" variant="ghost" disabled={phase === "checking"} onClick={() => submit("")}>
+            {!choices && (
+              <Button type="submit" size="lg" disabled={phase === "checking"}>
+                {phase === "checking" ? "Checking…" : "Check"}
+              </Button>
+            )}
+            <Button
+              type="button"
+              size="lg"
+              variant="ghost"
+              disabled={phase === "checking"}
+              onClick={() => (choices ? choose(null) : submit(""))}
+            >
               I don’t know
             </Button>
           </div>
@@ -202,7 +243,12 @@ export function TestRunner({
         {error && <p className="text-center text-sm text-destructive">{error}</p>}
 
         {phase === "feedback" && result && (
-          <Feedback result={result} given={value} nextReview={nextReview}>
+          <Feedback
+            result={result}
+            given={choices ? (picked === null ? "" : choices[picked]) : value}
+            showGiven={!choices}
+            nextReview={nextReview}
+          >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-1.5">
                 <span className="text-xs text-muted-foreground">Tag:</span>
@@ -231,11 +277,14 @@ export function TestRunner({
 function Feedback({
   result,
   given,
+  showGiven,
   nextReview,
   children,
 }: {
   result: AnswerResult;
   given: string;
+  /** Typed answers repeat what was written; multiple choice already shows the pick. */
+  showGiven: boolean;
   nextReview: string | null;
   children: React.ReactNode;
 }) {
@@ -264,12 +313,61 @@ function Feedback({
       <p className="text-sm">
         <strong>{result.word}</strong> = {result.translations.map(displayAnswer).join(", ")}
       </p>
-      {result.kind === "wrong" && given.trim() && (
+      {showGiven && result.kind === "wrong" && given.trim() && (
         <p className="text-sm text-muted-foreground">
           You wrote: <span className="line-through">{given}</span>
         </p>
       )}
       {children}
+    </div>
+  );
+}
+
+function ChoiceOptions({
+  choices,
+  picked,
+  correctChoice,
+  disabled,
+  lang,
+  onChoose,
+}: {
+  choices: string[];
+  picked: number | null;
+  /** Known once the answer is checked. */
+  correctChoice: number | undefined;
+  disabled: boolean;
+  lang: string;
+  onChoose: (choice: number) => void;
+}) {
+  const checked = correctChoice !== undefined;
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {choices.map((text, i) => {
+        const isRight = checked && i === correctChoice;
+        const isWrongPick = checked && i === picked && !isRight;
+        return (
+          <button
+            key={i}
+            type="button"
+            lang={lang}
+            disabled={disabled}
+            onClick={() => onChoose(i)}
+            className={cn(
+              "flex min-h-14 items-center gap-3 rounded-xl border-2 border-b-4 px-4 py-2 text-left text-lg transition-colors",
+              !checked && "hover:bg-muted",
+              !checked && i === picked && "border-sky-500 bg-sky-500/10",
+              isRight && "border-green-600 bg-green-600/10",
+              isWrongPick && "animate-shake border-red-500 bg-red-500/10",
+              checked && !isRight && !isWrongPick && "opacity-50",
+            )}
+          >
+            <kbd className="flex size-6 shrink-0 items-center justify-center rounded-md border font-mono text-xs text-muted-foreground">
+              {i + 1}
+            </kbd>
+            <span>{displayAnswer(text)}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
