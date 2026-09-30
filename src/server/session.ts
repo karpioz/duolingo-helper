@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth/server";
 
 /**
- * Single-owner app: only emails listed in ALLOWED_EMAILS (comma-separated) may sign up or use it.
+ * Single-owner app: only emails listed in ALLOWED_EMAILS (comma-separated) may use it (sign-up is closed; accounts are created in the Neon console).
  * If the variable is empty, nobody is allowed — safer than accidentally opening the app to everyone.
  */
 export function isAllowedEmail(email: string | null | undefined): boolean {
