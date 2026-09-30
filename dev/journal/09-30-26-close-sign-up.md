@@ -29,3 +29,7 @@ Neon Auth (401 for bad credentials).
 
 - After deleting a route, `next build` fails on stale `.next/**/types/validator.ts`. Run `rm -rf .next`
   first.
+- Probing the live sign-up API right after pushing hit the old deployment and created a real
+  account (`x@example.com`, since deleted). Wait for the deploy to finish (check the Vercel
+  dashboard) before testing anything that writes to production. Test users are added by hand in
+  Neon.
