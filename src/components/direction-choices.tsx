@@ -48,14 +48,15 @@ export function DirectionChoices({
               selected ? "border-teal bg-teal-soft ring-1 ring-teal" : "bg-card hover:bg-muted",
             )}
           >
-            <span className="flex items-center gap-1.5 text-xl">
-              <Flag code={first.code} />
+            {/* Flags fill the card's width, the arrow sits between them. */}
+            <span className="flex items-center gap-2">
+              <Flag code={first.code} className="aspect-[3/2] h-auto w-auto min-w-0 flex-1 rounded-[5px]" />
               {d.value === "mixed" ? (
-                <ArrowLeftRight className="size-4 text-muted-foreground" aria-hidden />
+                <ArrowLeftRight className={cn("size-5 shrink-0", selected ? "text-teal" : "text-muted-foreground")} aria-hidden />
               ) : (
-                <ArrowRight className="size-4 text-muted-foreground" aria-hidden />
+                <ArrowRight className={cn("size-5 shrink-0", selected ? "text-teal" : "text-muted-foreground")} aria-hidden />
               )}
-              <Flag code={second.code} />
+              <Flag code={second.code} className="aspect-[3/2] h-auto w-auto min-w-0 flex-1 rounded-[5px]" />
             </span>
             <span>
               <span className="block text-sm font-semibold">{match ? d.matchLabel : d.label}</span>
