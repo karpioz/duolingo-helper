@@ -93,7 +93,7 @@ The Words page looked flat next to the rest. Changes:
     differ by fill, not only by icon.
 - **"Remove all"** is now a red trash icon button (`destructive`, `title` and `aria-label`
   "Remove all").
-- **Direction card flags are 25% smaller everywhere** (the flag row spans `w-3/4` of the card).
+- **Direction card flags:** first 25% smaller, then spread across the card: a fixed 48×32 px each, `justify-between`, so the extra width goes into the gaps instead of making the flags bigger.
 
 ## Next
 
