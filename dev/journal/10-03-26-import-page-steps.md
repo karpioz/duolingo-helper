@@ -35,6 +35,21 @@
   - `outputFileTracingIncludes` in `next.config.ts` adds it to the `/import` route's trace, so
     Vercel ships it. Checked: it appears in `page.js.nft.json` after `next build`.
 
+- **Import endpoint hardening (CSRF):** `POST /api/import/duolingo` now rejects, before auth:
+  - anything that isn't same-origin: 403. It uses `Sec-Fetch-Site`, falling back to `Origin` vs
+    `x-forwarded-host`/`host`; a missing Origin is rejected too;
+  - bodies that aren't `application/json`: 415. A cross-site JSON POST needs a CORS preflight,
+    which the app never grants.
+
+  Before, the session cookie alone guarded it, so a disguised `text/plain` form POST from
+  another site was only stopped by the cookie's SameSite setting (unchecked). Checked with
+  curl: no origin / cross-site / foreign origin → 403, same-origin text → 415, same-origin JSON
+  signed out → 401. From the signed-in /import page, an empty payload reaches validation
+  (400).
+- **What else protects the tables:** sign-in plus the `ALLOWED_EMAILS` allowlist, `/import`
+  accepting messages only from duolingo.com, zod limits on the payload, and parameterised
+  Drizzle queries. The copied script and address hold no secrets.
+
 ## Gotchas
 
 - **The fallback is untested against Duolingo.** It relies on Duolingo's router reacting to

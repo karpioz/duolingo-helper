@@ -2,7 +2,33 @@ import { duolingoImportSchema } from "@/importers/duolingo/protocol";
 import { saveDuolingoImport } from "@/importers/duolingo/save";
 import { assertUser } from "@/server/session";
 
+/**
+ * Only the app's own /import page may call this (it relays the collector's words). Blocks
+ * cross-site requests that would ride on the session cookie: browsers set Sec-Fetch-Site and
+ * Origin themselves, and a page can't fake them.
+ */
+function isSameOrigin(request: Request): boolean {
+  const site = request.headers.get("sec-fetch-site");
+  if (site) return site === "same-origin";
+  const origin = request.headers.get("origin");
+  if (!origin) return false;
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(request: Request) {
+  if (!isSameOrigin(request)) {
+    return Response.json({ error: "Cross-site requests are not allowed." }, { status: 403 });
+  }
+  // JSON only: a cross-site JSON POST needs a CORS preflight, which this app never grants.
+  if (!request.headers.get("content-type")?.toLowerCase().startsWith("application/json")) {
+    return Response.json({ error: "Send the import as JSON." }, { status: 415 });
+  }
+
   try {
     await assertUser();
   } catch {
