@@ -183,7 +183,7 @@ export function TestRunner({
           <div className="flex items-center gap-2">
             <Flag code={info.learning.code} className="text-2xl" />
             <p className="font-heading text-5xl font-extrabold tracking-tight">{question.prompt[0]}</p>
-            <AudioButton url={question.audioUrl} />
+            <AudioButton url={question.audioUrl} variant="solid" className="ml-1" />
           </div>
         )}
       </section>

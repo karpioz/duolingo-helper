@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AudioButton } from "@/components/audio-button";
+import { Flag } from "@/components/flag";
 import { MeaningPicker } from "@/components/meaning-picker";
 import { courseInfo } from "@/lib/courses";
 import { currentCourse } from "@/server/course";
@@ -12,7 +13,7 @@ import { listTags, listWords, type WordSort } from "@/server/words";
 export const metadata: Metadata = { title: "Words · Duolingo Helper" };
 
 const selectClass =
-  "h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30";
+  "h-9 rounded-full border border-input bg-card px-3.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
 
 export default async function WordsPage({ searchParams }: PageProps<"/words">) {
   const sp = await searchParams;
@@ -41,13 +42,18 @@ export default async function WordsPage({ searchParams }: PageProps<"/words">) {
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-5 px-4 py-8">
-      <div className="flex items-baseline justify-between gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Words</h1>
-        <span className="text-sm text-muted-foreground tabular-nums">{total.toLocaleString()} shown</span>
+      <div className="flex items-end justify-between gap-4">
+        <h1 className="flex items-center gap-3 text-4xl font-extrabold">
+          <Flag code={info.learning.code} className="text-[0.8em]" />
+          Words
+        </h1>
+        <span className="pb-1 text-sm text-muted-foreground tabular-nums">
+          {total.toLocaleString()} {info.learning.name} {total === 1 ? "word" : "words"}
+        </span>
       </div>
 
       <form className="flex flex-wrap items-center gap-2" action="/words">
-        <Input name="q" defaultValue={q} placeholder={`Search ${info.learning.name} or ${info.from.name}…`} className="w-full sm:w-64" />
+        <Input name="q" defaultValue={q} placeholder={`Search ${info.learning.name} or ${info.from.name}…`} className="w-full rounded-full px-4 sm:w-64" />
         <select name="sort" defaultValue={sort} className={selectClass} aria-label="Sort">
           <option value="recent">Recently learned</option>
           <option value="alphabetical">Alphabetical</option>
@@ -60,9 +66,7 @@ export default async function WordsPage({ searchParams }: PageProps<"/words">) {
             </option>
           ))}
         </select>
-        <Button type="submit" variant="secondary">
-          Apply
-        </Button>
+        <Button type="submit">Apply</Button>
         {(q || tagId || sort !== "recent") && (
           <Button variant="ghost" nativeButton={false} render={<Link href="/words" />}>
             Clear
@@ -75,25 +79,30 @@ export default async function WordsPage({ searchParams }: PageProps<"/words">) {
       ) : (
         <ul className="divide-y rounded-2xl border bg-card">
           {rows.map((w) => (
-            <li key={w.id} className="flex items-center gap-3 px-3 py-2.5">
-              <AudioButton url={w.audioUrl} />
+            <li key={w.id} className="flex items-center gap-3.5 px-4 py-3">
+              {w.audioUrl ? <AudioButton url={w.audioUrl} variant="solid" /> : <span className="size-11 shrink-0" />}
               <div className="min-w-0 flex-1">
-                <div className="font-medium">{w.text}</div>
+                <div className="font-heading text-lg leading-tight font-bold tracking-tight">{w.text}</div>
                 <div className="truncate text-sm text-muted-foreground">
                   <MeaningPicker word={w} variant="inline" />
                 </div>
               </div>
               {w.due && (
                 <span
-                  className={w.dueNow ? "text-xs font-medium text-warning" : "hidden text-xs text-muted-foreground sm:inline"}
+                  className={
+                    w.dueNow
+                      ? "shrink-0 rounded-full bg-warning-soft px-2.5 py-1 text-xs font-semibold text-warning ring-1 ring-saffron/40"
+                      : "hidden shrink-0 text-xs text-muted-foreground sm:inline"
+                  }
                   title="Next spaced-repetition review"
                 >
                   {w.dueNow ? "Due now" : `Review ${w.due}`}
                 </span>
               )}
               {(w.correct > 0 || w.wrong > 0) && (
-                <span className="hidden text-xs text-muted-foreground tabular-nums sm:inline" title="Correct / wrong answers">
-                  ✓{w.correct} ✗{w.wrong}
+                <span className="hidden shrink-0 gap-2 text-xs font-semibold tabular-nums sm:flex" title="Correct / wrong answers">
+                  <span className="text-success">✓ {w.correct}</span>
+                  <span className="text-danger">✗ {w.wrong}</span>
                 </span>
               )}
               <div className="flex shrink-0 gap-1.5">
