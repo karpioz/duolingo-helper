@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
 import { directionLabel } from "@/lib/exam-labels";
 import { currentCourse } from "@/server/course";
@@ -15,10 +16,8 @@ export default async function MyTestsPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 py-8">
-      <div className="space-y-1">
-        <Link href="/test" className="text-sm text-muted-foreground hover:text-foreground">
-          ← Test me
-        </Link>
+      <div className="flex flex-col gap-3">
+        <BackLink href="/test">Test me</BackLink>
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-2xl font-semibold tracking-tight">My tests</h1>
           <Button nativeButton={false} render={<Link href="/test/personal/new" />}>

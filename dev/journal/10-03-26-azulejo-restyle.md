@@ -95,6 +95,11 @@ The Words page looked flat next to the rest. Changes:
   "Remove all").
 - **Direction card flags:** first 25% smaller, then spread across the card: a fixed 48×32 px each, `justify-between`, so the extra width goes into the gaps instead of making the flags bigger.
 
+## Follow-up: back links
+
+The "← My tests" / "← Test me" text links are now `BackLink`: a cream pill with the arrow in a
+small teal circle (nudges left on hover). Used on My tests, New test and Edit test.
+
 ## Next
 
 - Possibly a restyle pass on the remaining pages (results summary, words row density).
