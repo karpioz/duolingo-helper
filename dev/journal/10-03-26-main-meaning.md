@@ -68,6 +68,13 @@ floor). Those are what the manual pick is for. Real examples are pinned in `matc
   file for regex-heavy code.
 - `'s?\b` matched "you'll" and "don't" too: possessives need `'s\b`.
 
+## Nav: My tests
+
+- The header has a "My tests" link (`/test/personal`).
+- Five links wrapped at phone width ("Test / me"). Fixes: links don't wrap
+  (`whitespace-nowrap`, sideways scroll as a fallback), tighter gaps below `sm`, and the logo
+  shows "DH" on phones. Checked at 390px: one line, no page overflow.
+
 ## Next
 
 - Maybe: show the main meaning in results and the typed-test feedback; bulk review of
