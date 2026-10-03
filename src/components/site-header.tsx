@@ -25,10 +25,10 @@ export function SiteHeader({
           aria-label="Duolingo Helper"
         >
           <span className="sm:hidden">
-            D<span className="text-primary">H</span>
+            D<span className="text-terracotta">H</span>
           </span>
           <span className="hidden sm:inline">
-            Duolingo <span className="text-primary">Helper</span>
+            Duolingo <span className="text-terracotta">Helper</span>
           </span>
         </Link>
         <NavLinks />

@@ -41,6 +41,16 @@ analytics, My tests at 390px.
 - **No dark theme:** nothing sets `.dark`, so its variables were left as they were.
 - The header container is wider than pages (`max-w-5xl`), so the switcher and links fit.
 
+## Follow-up: teal primary
+
+The terracotta buttons looked too close to the red destructive actions (delete, errors).
+Changes:
+- `--primary` is now tile teal (#0F5A5F, cream text). Buttons, selected option cards (on
+  teal-soft), the progress bar, chips and the meaning picker are teal.
+- Terracotta is a brand accent only, via a new `--terracotta` token: the "Helper" wordmark, the
+  active nav link, the tile strip dots and the chart series.
+- Red (`--destructive` #A61B1B, `--danger`) is left for delete and wrong answers.
+
 ## Next
 
 - Possibly a restyle pass on the remaining pages (results summary, words row density).

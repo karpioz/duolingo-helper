@@ -27,7 +27,7 @@ export function NavLinks() {
           aria-current={l.href === active ? "page" : undefined}
           className={cn(
             "text-muted-foreground hover:text-foreground",
-            l.href === active && "font-bold text-primary hover:text-primary",
+            l.href === active && "font-bold text-terracotta hover:text-terracotta",
           )}
         >
           {l.label}

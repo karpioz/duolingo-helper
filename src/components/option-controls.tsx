@@ -32,7 +32,7 @@ export function OptionCard({
       aria-pressed={selected}
       className={cn(
         "rounded-2xl border p-3.5 text-left transition-colors",
-        selected ? "border-primary bg-danger-soft ring-1 ring-primary" : "bg-card hover:bg-muted",
+        selected ? "border-primary bg-teal-soft ring-1 ring-primary" : "bg-card hover:bg-muted",
       )}
     >
       <div className="text-sm font-medium">{label}</div>

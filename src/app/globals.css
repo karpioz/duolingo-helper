@@ -17,6 +17,7 @@
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-display);
   --color-teal: var(--teal);
+  --color-terracotta: var(--terracotta);
   --color-teal-soft: var(--teal-soft);
   --color-saffron: var(--saffron);
   --color-success: var(--success);
@@ -64,14 +65,15 @@
 }
 
 :root {
-  /* Azulejo: sand, cream, terracotta, deep tile teal and saffron. */
+  /* Azulejo: sand, cream, deep tile teal (actions), terracotta (brand accent) and saffron.
+     Teal is the primary so buttons never look like the red destructive actions. */
   --background: #f3e9da;
   --foreground: #2a1d14;
   --card: #fff9f0;
   --card-foreground: #2a1d14;
   --popover: #fff9f0;
   --popover-foreground: #2a1d14;
-  --primary: #b4472a;
+  --primary: #0f5a5f;
   --primary-foreground: #fff9f0;
   --secondary: #eadbc4;
   --secondary-foreground: #2a1d14;
@@ -85,6 +87,7 @@
   --ring: #0f5a5f;
   /* Feedback and highlights */
   --teal: #0f5a5f;
+  --terracotta: #b4472a;
   --teal-soft: #e3efec;
   --saffron: #e0a21b;
   --success: #0f5a5f;
@@ -111,7 +114,7 @@
   --radius: 0.875rem;
   --sidebar: #fff9f0;
   --sidebar-foreground: #2a1d14;
-  --sidebar-primary: #b4472a;
+  --sidebar-primary: #0f5a5f;
   --sidebar-primary-foreground: #fff9f0;
   --sidebar-accent: #e3efec;
   --sidebar-accent-foreground: #0f5a5f;
