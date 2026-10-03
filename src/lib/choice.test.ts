@@ -20,9 +20,9 @@ describe("similarity", () => {
 
 describe("hintOf", () => {
   it("reads the person hint of the English label", () => {
-    expect(hintOf(["(?) did you learn", "(you) learned"])).toBe("you");
-    expect(hintOf(["(I) was", "was"])).toBe("i");
-    expect(hintOf(["nine"])).toBeNull();
+    expect(hintOf({ text: "aprendiste", translations: ["(?) did you learn", "(you) learned"] })).toBe("you");
+    expect(hintOf({ text: "estuve", translations: ["(I) was", "was"] })).toBe("i");
+    expect(hintOf({ text: "nueve", translations: ["nine"] })).toBeNull();
   });
 });
 

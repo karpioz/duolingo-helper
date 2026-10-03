@@ -10,15 +10,15 @@
  * "comiste"), the same number of words and a similar length.
  */
 import { normalize } from "./answers";
-import { overlaps, pickLabel, signature } from "./match";
+import { labelOf, overlaps, signature } from "./match";
 
 export const CHOICE_COUNT = 4;
 
-export type ChoiceWord = { id: number; text: string; translations: string[] };
+export type ChoiceWord = { id: number; text: string; translations: string[]; preferred?: string | null };
 
 /** What an option shows: the Spanish word when answering in Spanish, else its English label. */
-export function optionLabel(word: Pick<ChoiceWord, "text" | "translations">, answerInSpanish: boolean): string {
-  return answerInSpanish ? word.text : pickLabel(word.translations);
+export function optionLabel(word: Omit<ChoiceWord, "id">, answerInSpanish: boolean): string {
+  return answerInSpanish ? word.text : labelOf(word);
 }
 
 function commonSuffix(a: string, b: string): number {
@@ -28,8 +28,8 @@ function commonSuffix(a: string, b: string): number {
 }
 
 /** The hint in front of an English label: "(you) learned" → "you", "woman" → null. */
-export function hintOf(translations: string[]): string | null {
-  return /^\(([^)?]+)\)/.exec(pickLabel(translations))?.[1].trim().toLowerCase() ?? null;
+export function hintOf(word: Omit<ChoiceWord, "id">): string | null {
+  return /^\(([^)?]+)\)/.exec(labelOf(word))?.[1].trim().toLowerCase() ?? null;
 }
 
 /** Same person/tense (both hinted alike) is a strong signal; a hinted verb vs a plain noun is not. */
@@ -69,7 +69,7 @@ export function pickDistractors(
   { count = CHOICE_COUNT - 1, random = Math.random }: { count?: number; random?: () => number } = {},
 ): number[] {
   const targetLabel = normalize(optionLabel(target, answerInSpanish));
-  const targetHint = hintOf(target.translations);
+  const targetHint = hintOf(target);
   const taken = [signature(target.translations)];
   const labels = [bare(optionLabel(target, answerInSpanish))];
 
@@ -79,7 +79,7 @@ export function pickDistractors(
       w,
       score:
         similarity(targetLabel, optionLabel(w, answerInSpanish)) +
-        hintScore(targetHint, hintOf(w.translations)) +
+        hintScore(targetHint, hintOf(w)) +
         random() * 3,
     }))
     .sort((x, y) => y.score - x.score);

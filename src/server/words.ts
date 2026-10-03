@@ -14,6 +14,8 @@ export type WordRow = {
   text: string;
   audioUrl: string | null;
   translations: string[];
+  /** Main meaning picked by the user, if any. */
+  preferred: string | null;
   tagIds: number[];
   correct: number;
   wrong: number;
@@ -86,6 +88,7 @@ export async function listWords(opts: { q?: string; sort?: WordSort; tagId?: num
         text: words.text,
         audioUrl: words.audioUrl,
         translations: wordTranslations(),
+        preferred: words.preferredTranslation,
         tagIds: wordTagIds(),
         correct: sql<number>`(select count(*)::int from ${examAnswers} a where a.word_id = ${WORD_ID} and a.is_correct)`,
         wrong: sql<number>`(select count(*)::int from ${examAnswers} a where a.word_id = ${WORD_ID} and not a.is_correct)`,
@@ -105,6 +108,22 @@ export async function listWords(opts: { q?: string; sort?: WordSort; tagId?: num
     return { ...r, due: due ? formatDue(due, now) : null, dueNow: !!due && due <= now };
   });
   return { rows: withDue, total, page, pages: Math.max(1, Math.ceil(total / PAGE_SIZE)) };
+}
+
+/**
+ * Sets (or with null, clears) a word's main meaning. Returns false if `text` isn't one of the
+ * word's translations.
+ */
+export async function setPreferredTranslation(wordId: number, text: string | null): Promise<boolean> {
+  if (text !== null) {
+    const [found] = await db
+      .select({ id: translations.id })
+      .from(translations)
+      .where(and(eq(translations.wordId, wordId), eq(translations.text, text)));
+    if (!found) return false;
+  }
+  await db.update(words).set({ preferredTranslation: text }).where(eq(words.id, wordId));
+  return true;
 }
 
 export async function listTags(): Promise<TagWithCount[]> {

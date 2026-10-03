@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { examAnswers, examSessions, reviewStates, translations, wordTags, words } from "@/db/schema";
 import { checkAnswer, type CheckResult, type MatchKind } from "@/lib/answers";
 import { optionLabel, pickDistractors } from "@/lib/choice";
-import { buildBoards, pickLabel } from "@/lib/match";
+import { buildBoards, labelFirst, labelOf } from "@/lib/match";
 import { gradeFor } from "@/lib/srs";
 import { personalTestWordIds } from "./personal-tests";
 import { applyReview } from "./review";
@@ -173,7 +173,7 @@ export async function createExam(o: ExamOptions, extra: { testName?: string } = 
 /** Adds options to each question, drawn from the whole course so there's plenty to choose from. */
 async function withChoices(questions: Question[]): Promise<Question[]> {
   const pool = await db
-    .select({ id: words.id, text: words.text, translations: wordTranslations() })
+    .select({ id: words.id, text: words.text, translations: wordTranslations(), preferred: words.preferredTranslation })
     .from(words)
     .where(eq(words.course, COURSE));
   const byId = new Map(pool.map((w) => [w.id, w]));
@@ -208,6 +208,7 @@ export async function getExam(id: number) {
       text: words.text,
       audioUrl: words.audioUrl,
       translations: wordTranslations(),
+      preferred: words.preferredTranslation,
       tagIds: wordTagIds(),
     })
     .from(words)
@@ -223,7 +224,7 @@ export async function getExam(id: number) {
     return {
       wordId: q.wordId,
       direction: q.direction,
-      prompt: answerInSpanish ? w.translations : [w.text],
+      prompt: answerInSpanish ? labelFirst(w) : [w.text],
       audioUrl: w.audioUrl,
       tagIds: w.tagIds,
       choices: q.choices?.filter((id) => byId.has(id)).map((id) => optionLabel(byId.get(id)!, answerInSpanish)),
@@ -423,7 +424,13 @@ export async function getMatchExam(id: number) {
   const options = session.options as StoredOptions;
 
   const rows = await db
-    .select({ id: words.id, text: words.text, audioUrl: words.audioUrl, translations: wordTranslations() })
+    .select({
+      id: words.id,
+      text: words.text,
+      audioUrl: words.audioUrl,
+      translations: wordTranslations(),
+      preferred: words.preferredTranslation,
+    })
     .from(words)
     .where(inArray(words.id, options.questions.map((q) => q.wordId)));
   const byId = new Map(rows.map((r) => [r.id, r]));
@@ -437,7 +444,7 @@ export async function getMatchExam(id: number) {
         .filter((q) => byId.has(q.wordId))
         .map((q) => {
           const w = byId.get(q.wordId)!;
-          return { wordId: w.id, spanish: w.text, english: pickLabel(w.translations), audioUrl: w.audioUrl };
+          return { wordId: w.id, spanish: w.text, english: labelOf(w), audioUrl: w.audioUrl };
         });
     boards.push({
       direction: qs[0]?.direction ?? "source_to_target",

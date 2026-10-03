@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AudioButton } from "@/components/audio-button";
+import { MeaningPicker } from "@/components/meaning-picker";
 import { TagToggle } from "@/components/tag-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { displayAnswer } from "@/lib/answers";
 import { listTags, listWords, type WordSort } from "@/server/words";
 
 export const metadata: Metadata = { title: "Words · Duolingo Helper" };
@@ -73,7 +73,7 @@ export default async function WordsPage({ searchParams }: PageProps<"/words">) {
               <div className="min-w-0 flex-1">
                 <div className="font-medium">{w.text}</div>
                 <div className="truncate text-sm text-muted-foreground">
-                  {w.translations.map(displayAnswer).join(", ")}
+                  <MeaningPicker word={w} variant="inline" />
                 </div>
               </div>
               {w.due && (

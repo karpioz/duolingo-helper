@@ -42,6 +42,12 @@ export const words = pgTable(
     /** Position in Duolingo's "recently learned" order at last import (0 = most recent). */
     duoRank: integer("duo_rank"),
     source: text().notNull().default("duolingo"),
+    /**
+     * The translation the user picked as the main meaning, shown on match tiles and choice
+     * options. Stored as text so it survives re-imports (which replace translations); ignored
+     * if it's no longer one of them.
+     */
+    preferredTranslation: text("preferred_translation"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },

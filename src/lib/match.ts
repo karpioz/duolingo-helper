@@ -2,17 +2,86 @@
  * Match-pairs boards: choosing the English label for a tile and grouping words so that no two
  * words on the same board share a translation (every pairing on a board is unambiguous).
  */
-import { variants } from "./answers";
+import { normalize, stripAccents, variants } from "./answers";
 
 export const BOARD_SIZE = 5;
 
 /**
- * The translation to show on a tile. Prefers a hinted form ("(you) learned") because it pins the
- * verb form; skips "(?)" question forms; falls back to the first translation.
+ * The translation to show for a word (match tiles, multiple choice options). A main meaning the
+ * user picked wins while it's still one of the translations; otherwise `autoLabel` chooses.
  */
-export function pickLabel(translations: string[]): string {
-  const plain = translations.filter((t) => !t.includes("(?)"));
-  return plain.find((t) => /\(.+\)/.test(t)) ?? plain[0] ?? translations[0] ?? "";
+export function pickLabel(translations: string[], opts: { spanish?: string; preferred?: string | null } = {}): string {
+  if (opts.preferred && translations.includes(opts.preferred)) return opts.preferred;
+  return autoLabel(translations, opts.spanish);
+}
+
+/** `pickLabel` for a word row. */
+export function labelOf(word: { text: string; translations: string[]; preferred?: string | null }): string {
+  return pickLabel(word.translations, { spanish: word.text, preferred: word.preferred });
+}
+
+/** Translations with the label first, for lists like typed-test prompts. */
+export function labelFirst(word: { text: string; translations: string[]; preferred?: string | null }): string[] {
+  const label = labelOf(word);
+  return [label, ...word.translations.filter((t) => t !== label)];
+}
+
+const isHinted = (t: string) => /^\((?!\?)[^)]+\)/.test(t);
+const plain = (t: string) => normalize(t.replace(/\([^)]*\)/g, " "));
+/** "(?) did you…", possessives, "(since)" fragments, dashes: never a good label. */
+const isJunk = (t: string) => {
+  const w = plain(t);
+  const possessive = /(?<!\b(it|he|she|that|what|how|there|here|who|where|let))'s\b|s'(\s|$)/.test(w);
+  return !w || possessive || /\(\?\)|\(since\)|—/.test(t);
+};
+/** A comparative, superlative or -ly form of another translation ("happier" / "happy"). */
+function isDegree(w: string, others: Set<string>): boolean {
+  const stems = [w.replace(/(ier|iest)$/, "y"), w.replace(/(er|est|r|st|ly)$/, "")];
+  return stems.some((s) => s !== w && others.has(s));
+}
+/** A plural of another translation ("plants" / "plant"). */
+function isPlural(w: string, others: Set<string>): boolean {
+  const stems = [w.replace(/s$/, ""), w.replace(/es$/, ""), w.replace(/ies$/, "y")];
+  return stems.some((s) => s !== w && others.has(s));
+}
+
+/**
+ * Scores each translation; Duolingo's order (position) breaks ties. Duolingo's lists mix the
+ * meaning with participles, plurals, possessives and fragments, and the first entry is often
+ * not the obvious one ("comida": eaten, food, meal).
+ *
+ * - Hinted verb forms win over plain ones ("(you) learned" pins the person), more so when the
+ *   plain form is listed too.
+ * - Plain forms lose points for: junk (incl. possessives, but not "how's"), contractions like
+ *   "you'll", comparatives of another option, plurals of another option when the Spanish word is
+ *   singular, a capitalised echo of the Spanish word ("Rio" for "río"), and "-ed" forms of words
+ *   that aren't participles ("designed" for "plan").
+ */
+export function autoLabel(translations: string[], spanish?: string): string {
+  if (translations.length <= 1) return translations[0] ?? "";
+  const plains = new Set(translations.filter((t) => !isHinted(t)).map(plain));
+  const es = spanish ? stripAccents(normalize(spanish)) : null;
+  const spanishPlural = !!es && /s$/.test(es);
+  const participle = !es || /([ai]d|t|ch)[ao]s?$/.test(es);
+  const anyHinted = translations.some(isHinted);
+
+  let best = translations[0];
+  let bestScore = -Infinity;
+  translations.forEach((t, position) => {
+    const w = plain(t);
+    let score = -0.25 * position;
+    if (isJunk(t)) score -= 10;
+    if (isHinted(t)) score += plains.has(w) ? 3 : 2;
+    else {
+      if (/'(ll|d|ve)\b|n't\b/.test(w)) score -= 2;
+      if (isDegree(w, plains)) score -= 4;
+      if (!spanishPlural && isPlural(w, plains)) score -= 3;
+      if (/^[A-Z]/.test(t) && stripAccents(w) === es) score -= 3;
+      if (!anyHinted && !participle && /ed$/.test(w)) score -= 2;
+    }
+    if (score > bestScore) [best, bestScore] = [t, score];
+  });
+  return best;
 }
 
 /** Normalized forms of all translations, used to detect overlaps between words. */

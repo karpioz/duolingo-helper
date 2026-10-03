@@ -5,11 +5,13 @@ import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { findWords, savePersonal } from "@/app/actions";
 import { AudioButton } from "@/components/audio-button";
+import { MeaningPicker } from "@/components/meaning-picker";
 import { Choice, Field, OptionCard } from "@/components/option-controls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { displayAnswer } from "@/lib/answers";
+import { labelOf } from "@/lib/match";
 import { cn } from "@/lib/utils";
 import type { PickedWord } from "@/server/personal-tests";
 
@@ -44,6 +46,8 @@ export function PersonalTestForm({
   const [query, setQuery] = useState("");
   /** Search results and the query they're for (they lag behind typing). */
   const [search, setSearch] = useState<{ q: string; words: PickedWord[] } | null>(null);
+  /** Word whose main meaning is being edited in the "In this test" panel. */
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -80,6 +84,13 @@ export function PersonalTestForm({
       return [...list, ...words.filter((w) => !have.has(w.id))].slice(0, MAX_WORDS);
     });
   const remove = (wordId: number) => setPicked((list) => list.filter((w) => w.id !== wordId));
+  const editing = picked.find((w) => w.id === editingId);
+  /** Keeps the picked list and search results in step with a main meaning change. */
+  const setPreferred = (wordId: number, preferred: string | null) => {
+    const update = (w: PickedWord) => (w.id === wordId ? { ...w, preferred } : w);
+    setPicked((list) => list.map(update));
+    setSearch((s) => s && { ...s, words: s.words.map(update) });
+  };
 
   function save(start: boolean) {
     setError(null);
@@ -154,10 +165,21 @@ export function PersonalTestForm({
             {picked.map((w) => (
               <li
                 key={w.id}
-                className="flex items-center gap-1 rounded-full border bg-background py-0.5 pr-0.5 pl-3 text-sm"
-                title={w.translations.map(displayAnswer).join(", ")}
+                className={cn(
+                  "flex items-center gap-1 rounded-full border bg-background py-0.5 pr-0.5 pl-1 text-sm",
+                  w.id === editingId && "border-primary ring-1 ring-primary",
+                )}
               >
-                {w.text}
+                <button
+                  type="button"
+                  onClick={() => setEditingId((id) => (id === w.id ? null : w.id))}
+                  aria-expanded={w.id === editingId}
+                  title="Choose the meaning shown in tests"
+                  className="rounded-full px-2 hover:underline"
+                >
+                  {w.text}
+                  <span className="text-muted-foreground"> · {displayAnswer(labelOf(w))}</span>
+                </button>
                 <Button
                   type="button"
                   variant="ghost"
@@ -171,6 +193,27 @@ export function PersonalTestForm({
               </li>
             ))}
           </ul>
+        )}
+        {editing && (
+          <div className="space-y-2 rounded-lg border bg-background p-3">
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-sm">
+                Main meaning of <span className="font-medium">{editing.text}</span>
+              </p>
+              <Button type="button" variant="ghost" size="xs" onClick={() => setEditingId(null)}>
+                Done
+              </Button>
+            </div>
+            <MeaningPicker
+              key={editing.id}
+              word={editing}
+              variant="pills"
+              onChange={(preferred) => setPreferred(editing.id, preferred)}
+            />
+          </div>
+        )}
+        {picked.length > 0 && !editing && (
+          <p className="text-xs text-muted-foreground">Click a word to choose which meaning tests show.</p>
         )}
         {tooFewForMatch && <p className="text-xs text-muted-foreground">Match pairs needs at least 2 words.</p>}
       </section>

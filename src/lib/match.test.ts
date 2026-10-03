@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildBoards, pickLabel, tileFromKey, tileKey } from "./match";
+import { autoLabel, buildBoards, labelFirst, pickLabel, tileFromKey, tileKey } from "./match";
 
 describe("pickLabel", () => {
   it("prefers a hinted form and skips (?) questions", () => {
@@ -8,6 +8,45 @@ describe("pickLabel", () => {
   it("falls back to the first plain translation", () => {
     expect(pickLabel(["woman"])).toBe("woman");
     expect(pickLabel(["(?) did you study"])).toBe("(?) did you study");
+  });
+});
+
+describe("pickLabel with a main meaning", () => {
+  it("uses the main meaning while it's still a translation", () => {
+    expect(pickLabel(["dish", "course", "plate"], { spanish: "plato", preferred: "plate" })).toBe("plate");
+    expect(pickLabel(["dish", "course"], { spanish: "plato", preferred: "plate" })).toBe("dish");
+  });
+  it("puts the label first in lists", () => {
+    expect(labelFirst({ text: "plato", translations: ["dish", "course", "plate"], preferred: "plate" })).toEqual([
+      "plate",
+      "dish",
+      "course",
+    ]);
+  });
+});
+
+// Real Duolingo translation lists (Spanish word, translations in Duolingo's order).
+describe("autoLabel", () => {
+  const cases: [string, string[], string][] = [
+    ["aprendiste", ["(?) did you learn", "learn", "(you) learned", "learned"], "(you) learned"],
+    ["espero", ["(I) am waiting for", "(I) wait", "(I) hope", "waiting", "wait"], "(I) wait"],
+    ["contento", ["happier", "happy", "glad", "pleased"], "happy"],
+    ["museo", ["museums", "museum", "museum's"], "museum"],
+    ["conciertos", ["concerts", "concert"], "concerts"],
+    ["bolsa", ["bag's", "bag", "market's"], "bag"],
+    ["año", ["years'", "year", "year's", "year’s"], "year"],
+    ["te", ["your", "you'll", "you", "yourself"], "you"],
+    ["usted", ["you'll", "you", "you—i've"], "you"],
+    ["río", ["Rio", "(I) am laughing", "river", "Río", "(I) laugh", "laugh"], "(I) laugh"],
+    ["estamos", ["have been (since)", "(?) are we", "re", "(we) are", "we're", "are"], "(we) are"],
+    ["qué tal", ["how's", "how's ... going", "(?) how are you", "how"], "how's"],
+    ["chino", ["Chinese", "curly"], "Chinese"],
+    ["frito", ["fried", "fry"], "fried"],
+    ["granja", ["farm", "granja"], "farm"],
+    ["cansado", ["tired", "sleepy"], "tired"],
+  ];
+  it.each(cases)("%s → %s", (spanish, translations, expected) => {
+    expect(autoLabel(translations, spanish)).toBe(expected);
   });
 });
 

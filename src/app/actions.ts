@@ -7,6 +7,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { wordTags } from "@/db/schema";
 import { assertUser } from "@/server/session";
+import { setPreferredTranslation } from "@/server/words";
 import { createExam, examOptionsSchema, recordAnswer, recordMatchBoard, type AnswerResult } from "@/server/exams";
 import {
   MAX_PERSONAL_WORDS,
@@ -90,6 +91,14 @@ export async function submitMatchBoard(
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Could not save the board." };
   }
+}
+
+/** Sets a word's main meaning (one of its translations), or clears it with null. */
+export async function setMainMeaning(wordId: number, text: string | null): Promise<{ ok: boolean }> {
+  await assertUser();
+  const id = z.number().int().parse(wordId);
+  const meaning = z.string().max(500).nullable().parse(text);
+  return { ok: await setPreferredTranslation(id, meaning) };
 }
 
 /** Test creator: words matching `q` (recently learned words when empty). */

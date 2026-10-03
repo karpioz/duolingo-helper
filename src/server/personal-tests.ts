@@ -22,13 +22,20 @@ export const personalTestSchema = z
   .refine((t) => t.mode !== "match" || t.wordIds.length >= 2, "Match pairs needs at least 2 words.");
 export type PersonalTestInput = z.infer<typeof personalTestSchema>;
 
-export type PickedWord = { id: number; text: string; translations: string[]; audioUrl: string | null };
+export type PickedWord = {
+  id: number;
+  text: string;
+  translations: string[];
+  preferred: string | null;
+  audioUrl: string | null;
+};
 
 const wordColumns = {
   id: words.id,
   text: words.text,
   audioUrl: words.audioUrl,
   translations: wordTranslations(),
+  preferred: words.preferredTranslation,
 };
 
 /** Words for the test creator: exact and prefix matches first, then most recently learned. */
