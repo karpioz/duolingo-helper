@@ -71,7 +71,8 @@ export function PersonalTestForm({
   const full = picked.length >= MAX_WORDS;
   const unpickedResults = results?.filter((w) => !pickedIds.has(w.id)) ?? [];
   const tooFewForMatch = mode === "match" && picked.length === 1;
-  const canSave = name.trim().length > 0 && picked.length > 0 && !tooFewForMatch && !pending;
+  const nameMissing = name.trim().length === 0;
+  const canSave = !nameMissing && picked.length > 0 && !tooFewForMatch && !pending;
 
   const add = (words: PickedWord[]) =>
     setPicked((list) => {
@@ -105,7 +106,15 @@ export function PersonalTestForm({
           onChange={(e) => setName(e.target.value)}
           placeholder="e.g. Past tense verbs"
           autoFocus={!id}
+          aria-invalid={nameMissing || undefined}
+          className={cn(
+            nameMissing &&
+              "border-red-300 bg-red-50/60 focus-visible:border-red-400 focus-visible:ring-red-200 dark:border-red-400/50 dark:bg-red-950/20 dark:focus-visible:ring-red-900/50",
+          )}
         />
+        {nameMissing && picked.length > 0 && (
+          <p className="text-xs text-red-600 dark:text-red-400">Name the test to save it.</p>
+        )}
       </div>
 
       <Field label="Test type">
@@ -125,6 +134,46 @@ export function PersonalTestForm({
           ))}
         </div>
       </Field>
+
+      <section className="space-y-3 rounded-xl border bg-muted/40 p-4">
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 className="text-sm font-medium">
+            In this test · {picked.length}
+            {full && <span className="font-normal text-muted-foreground"> (max {MAX_WORDS})</span>}
+          </h2>
+          {picked.length > 0 && (
+            <Button type="button" variant="link" size="xs" className="px-0" onClick={() => setPicked([])}>
+              Remove all
+            </Button>
+          )}
+        </div>
+        {picked.length === 0 ? (
+          <p className="py-3 text-center text-sm text-muted-foreground">No words yet: search below and click a word to add it.</p>
+        ) : (
+          <ul className="flex flex-wrap gap-1.5">
+            {picked.map((w) => (
+              <li
+                key={w.id}
+                className="flex items-center gap-1 rounded-full border bg-background py-0.5 pr-0.5 pl-3 text-sm"
+                title={w.translations.map(displayAnswer).join(", ")}
+              >
+                {w.text}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  className="rounded-full"
+                  aria-label={`Remove ${w.text}`}
+                  onClick={() => remove(w.id)}
+                >
+                  <X />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {tooFewForMatch && <p className="text-xs text-muted-foreground">Match pairs needs at least 2 words.</p>}
+      </section>
 
       <Field label="Add words">
         <div className="relative">
@@ -199,41 +248,6 @@ export function PersonalTestForm({
         )}
       </Field>
 
-      <Field label={`In this test · ${picked.length}${full ? ` (max ${MAX_WORDS})` : ""}`}>
-        {picked.length === 0 ? (
-          <p className="rounded-xl border border-dashed py-6 text-center text-sm text-muted-foreground">
-            No words yet: search above and click a word to add it.
-          </p>
-        ) : (
-          <>
-            <ul className="flex flex-wrap gap-1.5">
-              {picked.map((w) => (
-                <li
-                  key={w.id}
-                  className="flex items-center gap-1 rounded-full border bg-muted/40 py-0.5 pr-0.5 pl-3 text-sm"
-                  title={w.translations.map(displayAnswer).join(", ")}
-                >
-                  {w.text}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    className="rounded-full"
-                    aria-label={`Remove ${w.text}`}
-                    onClick={() => remove(w.id)}
-                  >
-                    <X />
-                  </Button>
-                </li>
-              ))}
-            </ul>
-            <Button type="button" variant="link" size="xs" className="self-start px-0" onClick={() => setPicked([])}>
-              Remove all
-            </Button>
-          </>
-        )}
-        {tooFewForMatch && <p className="text-xs text-muted-foreground">Match pairs needs at least 2 words.</p>}
-      </Field>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 

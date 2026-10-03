@@ -35,7 +35,7 @@ export function DeleteTestButton({ id, name }: { id: number; name: string }) {
   if (!confirming) {
     return (
       <Button
-        variant="ghost"
+        variant="destructive"
         size="icon"
         aria-label={`Delete ${name}`}
         title="Delete"

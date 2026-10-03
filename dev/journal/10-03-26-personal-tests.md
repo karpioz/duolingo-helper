@@ -61,6 +61,15 @@ covers the server side.
 - The smoke script doesn't record answers, because that would move real words' review dates. It
   marks the run finished directly instead.
 
+## UI follow-up (after first use)
+
+- **Empty name was easy to miss:** Save was disabled with no reason given. An empty name now gets
+  a light-red border and background (`aria-invalid`), plus "Name the test to save it." once
+  words are picked.
+- **"In this test" moved above "Add words"** into its own panel (`bg-muted/40`, border,
+  padding), with "Remove all" in its header. The picked words stay in view while you search.
+- **Delete in My tests** uses the `destructive` button variant (red icon, light-red background).
+
 ## Next
 
 - Maybe: start a personal test from the Words page ("add to test…"), reorder words, choose
