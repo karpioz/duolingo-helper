@@ -23,7 +23,7 @@ export default async function EditPersonalTestPage({ params }: PageProps<"/test/
       </div>
       <PersonalTestForm
         id={test.id}
-        initial={{ name: test.name, mode: test.mode === "match" ? "match" : "typed", direction: test.direction, words }}
+        initial={{ name: test.name, mode: test.mode, direction: test.direction, words }}
       />
     </main>
   );

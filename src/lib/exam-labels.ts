@@ -23,3 +23,9 @@ export function describeExam(source: string, direction: string, mode?: string, t
   if (mode === "choice") return `Multiple choice · ${base}`;
   return base;
 }
+
+/** Name suggested when saving a generated exam as a personal test: "Due for review · Spanish → English · 3 Oct". */
+export function defaultTestName(session: { source: string; direction: string; mode: string; startedAt: Date }) {
+  const date = session.startedAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  return `${describeExam(session.source, session.direction, session.mode)} · ${date}`;
+}

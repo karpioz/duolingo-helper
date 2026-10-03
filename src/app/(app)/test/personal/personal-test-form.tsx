@@ -15,13 +15,14 @@ import { labelOf } from "@/lib/match";
 import { cn } from "@/lib/utils";
 import type { PickedWord } from "@/server/personal-tests";
 
-type Mode = "typed" | "match";
+type Mode = "typed" | "choice" | "match";
 type Direction = "source_to_target" | "target_to_source" | "mixed";
 
 const MAX_WORDS = 200;
 
 const MODES: { value: Mode; label: string; hint: string }[] = [
   { value: "typed", label: "Type answers", hint: "Write the translation" },
+  { value: "choice", label: "Multiple choice", hint: "Pick the translation from 4 options" },
   { value: "match", label: "Match pairs", hint: "Pair Spanish and English tiles, 5 at a time" },
 ];
 
@@ -129,7 +130,7 @@ export function PersonalTestForm({
       </div>
 
       <Field label="Test type">
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid gap-2 sm:grid-cols-3">
           {MODES.map((m) => (
             <OptionCard key={m.value} selected={mode === m.value} onClick={() => setMode(m.value)} label={m.label} hint={m.hint} />
           ))}

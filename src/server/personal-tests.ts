@@ -2,7 +2,7 @@ import "server-only";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { examSessions, personalTestWords, personalTests, words } from "@/db/schema";
+import { examSessions, personalTestWords, personalTests, words, type ExamSession } from "@/db/schema";
 import { COURSE, alphaKey, matchesQuery, wordTranslations } from "./words";
 
 /** Exams take at most 200 words, so a personal test does too. */
@@ -11,7 +11,7 @@ export const MAX_PERSONAL_WORDS = 200;
 export const personalTestSchema = z
   .object({
   name: z.string().trim().min(1, "Give the test a name.").max(100),
-  mode: z.enum(["typed", "match"]),
+  mode: z.enum(["typed", "choice", "match"]),
   direction: z.enum(["source_to_target", "target_to_source", "mixed"]),
   wordIds: z
     .array(z.number().int())
@@ -62,7 +62,7 @@ export async function searchWords(q: string, limit = 20): Promise<PickedWord[]> 
 export type PersonalTestSummary = {
   id: number;
   name: string;
-  mode: "typed" | "match";
+  mode: "typed" | "choice" | "match";
   direction: "source_to_target" | "target_to_source" | "mixed";
   words: number;
   updatedAt: Date;
@@ -74,7 +74,7 @@ export async function listPersonalTests(): Promise<PersonalTestSummary[]> {
   const res = await db.execute<{
     id: number;
     name: string;
-    mode: "typed" | "match";
+    mode: "typed" | "choice" | "match";
     direction: PersonalTestSummary["direction"];
     words: number;
     updated_at: string;
@@ -89,7 +89,7 @@ export async function listPersonalTests(): Promise<PersonalTestSummary[]> {
     from ${personalTests} p
     left join lateral (
       select e.id, e.correct, e.size, e.finished_at from ${examSessions} e
-      where e.source = 'personal' and (e.options->>'personalTestId')::int = p.id and e.finished_at is not null
+      where (e.options->>'personalTestId')::int = p.id and e.finished_at is not null
       order by e.finished_at desc limit 1
     ) r on true
     where p.course = ${COURSE}
@@ -168,4 +168,22 @@ export async function savePersonalTest(input: PersonalTestInput, id?: number): P
 
 export async function deletePersonalTest(id: number) {
   await db.delete(personalTests).where(eq(personalTests.id, id));
+}
+
+/**
+ * Saves the words of an exam (in question order, with its type and direction) as a personal
+ * test, and links the exam to it so it counts as the test's latest run. Returns the test id.
+ */
+export async function savePersonalFromExam(session: ExamSession, name: string): Promise<number> {
+  const options = session.options as { questions: { wordId: number }[] };
+  const wordIds = [...new Set(options.questions.map((q) => q.wordId))].slice(0, MAX_PERSONAL_WORDS);
+  const input = personalTestSchema.parse({ name, mode: session.mode, direction: session.direction, wordIds });
+  const testId = (await savePersonalTest(input))!;
+  await db
+    .update(examSessions)
+    .set({
+      options: sql`${examSessions.options} || ${JSON.stringify({ personalTestId: testId, testName: input.name })}::jsonb`,
+    })
+    .where(eq(examSessions.id, session.id));
+  return testId;
 }

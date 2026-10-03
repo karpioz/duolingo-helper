@@ -2,7 +2,7 @@ import "server-only";
 import { and, asc, desc, eq, exists, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { examAnswers, examSessions, reviewStates, translations, wordTags, words } from "@/db/schema";
+import { examAnswers, examSessions, reviewStates, translations, wordTags, words, type ExamSession } from "@/db/schema";
 import { checkAnswer, type CheckResult, type MatchKind } from "@/lib/answers";
 import { optionLabel, pickDistractors } from "@/lib/choice";
 import { buildBoards, labelFirst, labelOf } from "@/lib/match";
@@ -513,4 +513,42 @@ export async function recordMatchBoard(
   });
 
   return { correct, isLast };
+}
+
+/**
+ * Cancels an unfinished exam. With no answers it's deleted; otherwise it's cut down to the
+ * questions already answered and marked finished (those answers already updated the review
+ * schedule, so history keeps them). Returns whether the session was deleted.
+ */
+export async function cancelExam(sessionId: number): Promise<{ deleted: boolean } | null> {
+  const [session] = await db.select().from(examSessions).where(eq(examSessions.id, sessionId));
+  if (!session) return null;
+  if (session.finishedAt) return { deleted: false };
+  const [{ answered }] = await db
+    .select({ answered: sql<number>`count(*)::int` })
+    .from(examAnswers)
+    .where(eq(examAnswers.sessionId, sessionId));
+  if (answered === 0) {
+    await db.delete(examSessions).where(eq(examSessions.id, sessionId));
+    return { deleted: true };
+  }
+  const options = session.options as StoredOptions;
+  // Match boards are saved whole, so `answered` always ends on a board boundary.
+  let boards: number[] | undefined;
+  if (options.boards) {
+    boards = [];
+    for (let n = 0; n < answered; n += options.boards[boards.length]) boards.push(options.boards[boards.length]);
+  }
+  const trimmed: StoredOptions = { ...options, questions: options.questions.slice(0, answered), boards };
+  await db
+    .update(examSessions)
+    .set({ options: trimmed, size: answered, finishedAt: new Date() })
+    .where(eq(examSessions.id, sessionId));
+  return { deleted: false };
+}
+
+/** The personal test an exam belongs to (run from it, or saved as one), if any. */
+export function examPersonalTest(session: ExamSession) {
+  const options = session.options as StoredOptions;
+  return { personalTestId: options.personalTestId ?? null, testName: options.testName ?? null };
 }

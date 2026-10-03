@@ -125,7 +125,7 @@ export function MatchRunner({
   // Number keys: 1–5 select the left column, 6–9 and 0 the right column.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || e.target instanceof HTMLInputElement) return;
       const tile = tileFromKey(e.key, board.pairs.length);
       if (tile) {
         e.preventDefault();

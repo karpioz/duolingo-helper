@@ -5,15 +5,16 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db";
-import { wordTags } from "@/db/schema";
+import { examSessions, wordTags } from "@/db/schema";
 import { assertUser } from "@/server/session";
 import { setPreferredTranslation } from "@/server/words";
-import { createExam, examOptionsSchema, recordAnswer, recordMatchBoard, type AnswerResult } from "@/server/exams";
+import { cancelExam, createExam, examOptionsSchema, recordAnswer, recordMatchBoard, type AnswerResult } from "@/server/exams";
 import {
   MAX_PERSONAL_WORDS,
   deletePersonalTest,
   getPersonalTest,
   personalTestSchema,
+  savePersonalFromExam,
   savePersonalTest,
   searchWords,
   type PickedWord,
@@ -158,4 +159,35 @@ export async function startPersonal(id: number): Promise<{ error: string }> {
   );
   if (examId === null) return { error: "This test has no words." };
   redirect(`/test/${examId}`);
+}
+
+/** Saves a generated exam's words as a personal test, so it can be run again. */
+export async function saveExamAsTest(
+  examId: number,
+  name: string,
+): Promise<{ ok: true; testId: number } | { ok: false; error: string }> {
+  try {
+    await assertUser();
+    const [session] = await db.select().from(examSessions).where(eq(examSessions.id, z.number().int().parse(examId)));
+    if (!session) return { ok: false, error: "This test no longer exists." };
+    const parsed = z.string().trim().min(1, "Give the test a name.").max(100).safeParse(name);
+    if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+    const testId = await savePersonalFromExam(session, parsed.data);
+    revalidatePath("/test/personal");
+    return { ok: true, testId };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Could not save the test." };
+  }
+}
+
+/** Cancels an unfinished exam and leaves it: back to My tests for personal tests, else Test me. */
+export async function cancelTest(examId: number, backTo: "test" | "personal"): Promise<{ error: string }> {
+  try {
+    await assertUser();
+  } catch {
+    return { error: "You are signed out. Reload the page and sign in." };
+  }
+  const res = await cancelExam(z.number().int().parse(examId));
+  if (!res) return { error: "This test no longer exists." };
+  redirect(backTo === "personal" ? "/test/personal" : "/test");
 }

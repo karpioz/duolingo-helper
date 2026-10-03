@@ -5,10 +5,11 @@ import { AudioButton } from "@/components/audio-button";
 import { TagToggle } from "@/components/tag-toggle";
 import { Button } from "@/components/ui/button";
 import { displayAnswer } from "@/lib/answers";
-import { describeExam } from "@/lib/exam-labels";
+import { defaultTestName, describeExam } from "@/lib/exam-labels";
 import { cn } from "@/lib/utils";
-import { getResults } from "@/server/exams";
+import { examPersonalTest, getResults } from "@/server/exams";
 import { listTags } from "@/server/words";
+import { SaveAsTestButton } from "../exam-actions";
 import { RetestButton } from "./retest-button";
 
 export const metadata: Metadata = { title: "Results · Duolingo Helper" };
@@ -57,10 +58,16 @@ export default async function ResultsPage({ params }: PageProps<"/test/[id]/resu
         <Button variant={missedIds.length ? "outline" : "default"} nativeButton={false} render={<Link href="/test" />}>
           New test
         </Button>
-        {session.source === "personal" && (
+        {session.source === "personal" ? (
           <Button variant="outline" nativeButton={false} render={<Link href="/test/personal" />}>
             My tests
           </Button>
+        ) : (
+          <SaveAsTestButton
+            examId={session.id}
+            defaultName={defaultTestName(session)}
+            savedTestId={examPersonalTest(session).personalTestId}
+          />
         )}
       </div>
 

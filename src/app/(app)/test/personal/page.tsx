@@ -7,7 +7,7 @@ import { DeleteTestButton, StartTestButton } from "./test-actions";
 
 export const metadata: Metadata = { title: "My tests · Duolingo Helper" };
 
-const MODE_LABELS = { typed: "Type answers", match: "Match pairs" } as const;
+const MODE_LABELS = { typed: "Type answers", choice: "Multiple choice", match: "Match pairs" } as const;
 
 export default async function MyTestsPage() {
   const tests = await listPersonalTests();
