@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { collectorScript } from "@/importers/duolingo/collector";
 import { DUOLINGO_ORIGIN } from "@/importers/duolingo/protocol";
 import { currentCourse } from "@/server/course";
-import { CopyScriptButton } from "./copy-script-button";
+import { CopyButton } from "./copy-button";
 import { ImportReceiver } from "./import-receiver";
 
 export const metadata: Metadata = { title: "Import · Duolingo Helper" };
@@ -12,7 +12,9 @@ export default async function ImportPage() {
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
   const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  const [course, script] = await Promise.all([currentCourse(), collectorScript(`${proto}://${host}`)]);
+  const appUrl = `${proto}://${host}`;
+  const [course, script] = await Promise.all([currentCourse(), collectorScript(appUrl)]);
+  const urlLine = `window.DUOLINGO_HELPER_URL = ${JSON.stringify(appUrl)};`;
   const wordsPage = `${DUOLINGO_ORIGIN}/practice-hub/words`;
 
   return (
@@ -46,9 +48,18 @@ export default async function ImportPage() {
           </Step>
           <Step n={3} title="Copy the collector script">
             <div className="mt-2">
-              <CopyScriptButton script={script} />
+              <CopyButton text={script} label="Copy script" />
             </div>
-            <p className="mt-1.5 text-xs text-muted-foreground">It sends the words to this app ({new URL(`https://${host}`).host}).</p>
+            <div className="mt-3 space-y-1.5">
+              <p className="text-xs">
+                It sends the words to this app’s current address. If you run the script from elsewhere (or the
+                address changes), put this line before it:
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <code className="min-w-0 rounded-lg bg-muted px-2 py-1 text-xs break-all text-foreground">{urlLine}</code>
+                <CopyButton text={urlLine} label="Copy" variant="outline" />
+              </div>
+            </div>
           </Step>
           <Step n={4} title="Run it on the Duolingo tab">
             Open the browser console there (F12, or Ctrl+Shift+J / ⌘⌥J), paste the script and press Enter. Chrome may

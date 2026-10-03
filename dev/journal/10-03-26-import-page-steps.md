@@ -21,6 +21,13 @@
     Duolingo page saying what to do (e.g. "reload this page, then run the script again"), not
     just a console error.
 
+- **Copyable app address:** under Copy script, the line
+  `window.DUOLINGO_HELPER_URL = "<current address>";` with its own Copy button, for running the
+  script from elsewhere or after a domain change. `CopyButton` (was `CopyScriptButton`) is shared
+  by both.
+- **A new domain must also be added to Neon Auth's trusted domains** (see
+  [auth and deploy](09-29-26-auth-and-vercel-deploy.md)), or sign-in there fails.
+
 ## Decisions
 
 - **The script stays one file** (`src/importers/duolingo/browser-script.js`, still usable by hand).
