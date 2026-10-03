@@ -196,9 +196,9 @@ export function MatchRunner({
                     "relative flex min-h-14 items-center justify-center rounded-xl border-2 border-b-4 px-12 py-2 text-center text-base transition-colors",
                     "focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
                     state === "idle" && "bg-card hover:bg-muted",
-                    state === "selected" && "border-sky-400 bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300",
-                    state === "correct" && "border-green-500 bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300",
-                    state === "wrong" && "animate-shake border-red-300 bg-red-50 text-red-600 dark:bg-red-950 dark:text-red-300",
+                    state === "selected" && "border-teal bg-teal-soft text-teal",
+                    state === "correct" && "border-success bg-success-soft text-success",
+                    state === "wrong" && "animate-shake border-danger bg-danger-soft text-danger",
                     state === "matched" && "border-border/50 bg-transparent text-muted-foreground/40",
                   )}
                 >

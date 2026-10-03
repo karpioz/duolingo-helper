@@ -73,7 +73,7 @@ export default async function WordsPage({ searchParams }: PageProps<"/words">) {
       {rows.length === 0 ? (
         <p className="py-10 text-center text-muted-foreground">No words match.</p>
       ) : (
-        <ul className="divide-y rounded-xl border">
+        <ul className="divide-y rounded-2xl border bg-card">
           {rows.map((w) => (
             <li key={w.id} className="flex items-center gap-3 px-3 py-2.5">
               <AudioButton url={w.audioUrl} />
@@ -85,7 +85,7 @@ export default async function WordsPage({ searchParams }: PageProps<"/words">) {
               </div>
               {w.due && (
                 <span
-                  className={w.dueNow ? "text-xs font-medium text-amber-600 dark:text-amber-400" : "hidden text-xs text-muted-foreground sm:inline"}
+                  className={w.dueNow ? "text-xs font-medium text-warning" : "hidden text-xs text-muted-foreground sm:inline"}
                   title="Next spaced-repetition review"
                 >
                   {w.dueNow ? "Due now" : `Review ${w.due}`}

@@ -6,12 +6,13 @@ import { useEffect, useState, useTransition } from "react";
 import { findWords, savePersonal } from "@/app/actions";
 import { AudioButton } from "@/components/audio-button";
 import { MeaningPicker } from "@/components/meaning-picker";
-import { Choice, Field, OptionCard } from "@/components/option-controls";
+import { DirectionChoices } from "@/components/direction-choices";
+import { Field, OptionCard } from "@/components/option-controls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { displayAnswer } from "@/lib/answers";
-import { courseInfo, directionOptions } from "@/lib/courses";
+import { courseInfo } from "@/lib/courses";
 import { labelOf } from "@/lib/match";
 import { cn } from "@/lib/utils";
 import type { PickedWord } from "@/server/personal-tests";
@@ -120,11 +121,11 @@ export function PersonalTestForm({
           aria-invalid={nameMissing || undefined}
           className={cn(
             nameMissing &&
-              "border-red-300 bg-red-50/60 focus-visible:border-red-400 focus-visible:ring-red-200 dark:border-red-400/50 dark:bg-red-950/20 dark:focus-visible:ring-red-900/50",
+              "border-danger/50 bg-danger-soft/60 focus-visible:border-danger focus-visible:ring-danger/20",
           )}
         />
         {nameMissing && picked.length > 0 && (
-          <p className="text-xs text-red-600 dark:text-red-400">Name the test to save it.</p>
+          <p className="text-xs text-danger">Name the test to save it.</p>
         )}
       </div>
 
@@ -137,16 +138,10 @@ export function PersonalTestForm({
       </Field>
 
       <Field label={mode === "match" ? "Columns" : "Direction"}>
-        <div className="flex flex-wrap gap-2">
-          {directionOptions(course).map((d) => (
-            <Choice key={d.value} selected={direction === d.value} onClick={() => setDirection(d.value)}>
-              {mode === "match" ? d.matchLabel : d.label}
-            </Choice>
-          ))}
-        </div>
+        <DirectionChoices course={course} value={direction} onChange={setDirection} match={mode === "match"} />
       </Field>
 
-      <section className="space-y-3 rounded-xl border bg-muted/40 p-4">
+      <section className="space-y-3 rounded-2xl border bg-card p-4">
         <div className="flex items-baseline justify-between gap-2">
           <h2 className="text-sm font-medium">
             In this test · {picked.length}

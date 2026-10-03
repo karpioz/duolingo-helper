@@ -1,0 +1,47 @@
+# Azulejo restyle
+
+## Summary
+
+The whole app now uses the "Azulejo" direction picked from the design canvas (style directions
+artifact, frame 4/4b):
+- sand background (#F3E9DA), cream cards (#FFF9F0), terracotta primary (#B4472A);
+- deep tile teal (#0F5A5F) for selection, success and focus, saffron (#E0A21B) for highlights;
+- a Spanish-tile strip along the top of every page.
+
+- **Type:** DM Sans for text, Bricolage Grotesque for headings (h1–h3, card stat numbers, form
+  legends, wordmark). Both load with `latin-ext` for Turkish ğ ş İ.
+- **Header:** tile strip, "Duolingo **Helper**" wordmark ("DH" on phones), the current section
+  in bold terracotta (`NavLinks`, client, longest matching path wins), and the course switcher
+  as a cream pill.
+- **Components:** pill buttons (default h-9, lg h-11), cream inputs with rounded-xl, cards
+  rounded-2xl with a soft border shadow, a thicker rounded progress bar, teal switches.
+- **Test setup and creator:** terracotta-tinted selected cards. Direction is now flag cards
+  (`DirectionChoices`): flag → flag, the label, and a hint ("See Spanish, answer in English";
+  columns wording for match pairs).
+- **Tests:** the runner sits in a cream card. "Translate into English" carries the answer
+  language's flag in teal caps, and the prompt word gets its flag in large Bricolage.
+- **Feedback colours are tokens now** (`success`, `warning`, `danger`, `teal`, their `-soft`
+  versions) instead of Tailwind green/amber/red/sky:
+  - correct / matched = teal on teal-soft; almost = saffron border on warning-soft;
+    wrong = terracotta-red on danger-soft;
+  - selected tile or option = teal.
+- **Data viz:** a teal ordinal ramp (heatmap), terracotta series (score line, forecast bars), a
+  sand empty colour.
+
+Checked in Chrome on `dev`: Test me, a typed test (question and "Not quite" feedback), home,
+analytics, My tests at 390px.
+
+## Decisions
+
+- **Theme through CSS variables only** (`globals.css` `:root`). Pages keep their Tailwind token
+  classes (`bg-card`, `text-muted-foreground`, `bg-primary`), so most of the app restyled with
+  no markup changes. Hardcoded colour classes were the only per-file edits.
+- **UI copy stays English.** The mockup's "¡Correcto!" / "Siguiente" were dropped: they'd be
+  wrong in the Turkish course.
+- **No dark theme:** nothing sets `.dark`, so its variables were left as they were.
+- The header container is wider than pages (`max-w-5xl`), so the switcher and links fit.
+
+## Next
+
+- Possibly a restyle pass on the remaining pages (results summary, words row density).
+- Optionally a dark Azulejo theme.

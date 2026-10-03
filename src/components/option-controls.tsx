@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <fieldset className="min-w-0 space-y-2">
-      <legend className="mb-2 text-sm font-medium">{label}</legend>
+      <legend className="mb-2 font-heading text-base font-bold tracking-tight">{label}</legend>
       {children}
     </fieldset>
   );
@@ -31,8 +31,8 @@ export function OptionCard({
       onClick={onClick}
       aria-pressed={selected}
       className={cn(
-        "rounded-xl border p-3 text-left transition-colors",
-        selected ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted",
+        "rounded-2xl border p-3.5 text-left transition-colors",
+        selected ? "border-primary bg-danger-soft ring-1 ring-primary" : "bg-card hover:bg-muted",
       )}
     >
       <div className="text-sm font-medium">{label}</div>

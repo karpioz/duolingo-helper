@@ -26,7 +26,7 @@ export function CourseSwitcher({ current, courses }: { current: string; courses:
     <details ref={ref} className="group relative">
       <summary
         className={cn(
-          "flex h-8 cursor-pointer list-none items-center gap-1.5 rounded-lg border px-2 text-sm font-medium select-none hover:bg-muted [&::-webkit-details-marker]:hidden",
+          "flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-full border border-input bg-card px-3 text-sm font-semibold select-none hover:bg-muted [&::-webkit-details-marker]:hidden",
           pending && "opacity-60",
         )}
         aria-label={`Course: ${info.learning.name} from ${info.from.name}. Change course`}

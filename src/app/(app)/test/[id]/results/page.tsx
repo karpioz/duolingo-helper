@@ -72,13 +72,13 @@ export default async function ResultsPage({ params }: PageProps<"/test/[id]/resu
         )}
       </div>
 
-      <ul className="divide-y rounded-xl border">
+      <ul className="divide-y rounded-2xl border bg-card">
         {answers.map((a) => (
           <li key={a.id} className="flex items-center gap-3 px-3 py-2.5">
             <span
               className={cn(
                 "flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white",
-                !a.isCorrect ? "bg-red-600" : a.isAlmost ? "bg-amber-500" : "bg-green-600",
+                !a.isCorrect ? "bg-danger" : a.isAlmost ? "bg-saffron" : "bg-success",
               )}
               aria-label={!a.isCorrect ? "Wrong" : a.isAlmost ? "Almost" : "Correct"}
             >
@@ -94,7 +94,7 @@ export default async function ResultsPage({ params }: PageProps<"/test/[id]/resu
               </div>
               <div className="truncate text-sm text-muted-foreground">{a.translations.map(displayAnswer).join(", ")}</div>
               {!a.isCorrect && (
-                <div className="text-sm text-red-600 dark:text-red-400">
+                <div className="text-sm text-danger">
                   {a.given?.trim() ? (
                     <>
                       {session.mode === "choice" ? "You picked" : "You wrote"}:{" "}

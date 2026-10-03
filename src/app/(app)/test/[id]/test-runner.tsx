@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { displayAnswer } from "@/lib/answers";
 import { courseInfo } from "@/lib/courses";
+import { Flag } from "@/components/flag";
 import { formatDue } from "@/lib/srs";
 import { cn } from "@/lib/utils";
 import type { AnswerResult, ExamQuestion } from "@/server/exams";
@@ -172,14 +173,16 @@ export function TestRunner({
       </div>
 
       <section className="flex flex-col items-center gap-2 text-center">
-        <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+        <span className="flex items-center gap-2 text-xs font-bold tracking-widest text-teal uppercase">
+          <Flag code={answerLang.code} className="text-sm" />
           Translate into {answerLang.name}
         </span>
         {answerInLearned ? (
           <p className="text-2xl font-semibold text-balance">{question.prompt.map(displayAnswer).join(" · ")}</p>
         ) : (
-          <div className="flex items-center gap-1">
-            <p className="text-4xl font-semibold tracking-tight">{question.prompt[0]}</p>
+          <div className="flex items-center gap-2">
+            <Flag code={info.learning.code} className="text-2xl" />
+            <p className="font-heading text-5xl font-extrabold tracking-tight">{question.prompt[0]}</p>
             <AudioButton url={question.audioUrl} />
           </div>
         )}
@@ -294,9 +297,9 @@ function Feedback({
   children: React.ReactNode;
 }) {
   const tone = {
-    exact: { title: "Correct!", cls: "border-green-600/30 bg-green-600/10" },
-    almost: { title: "Almost — watch the spelling", cls: "border-amber-500/40 bg-amber-500/10" },
-    wrong: { title: given.trim() ? "Not quite" : "Here’s the answer", cls: "border-red-600/30 bg-red-600/10" },
+    exact: { title: "Correct!", cls: "border-success/25 bg-success-soft" },
+    almost: { title: "Almost — watch the spelling", cls: "border-saffron/50 bg-warning-soft" },
+    wrong: { title: given.trim() ? "Not quite" : "Here’s the answer", cls: "border-danger/30 bg-danger-soft" },
   }[result.kind];
 
   return (
@@ -360,9 +363,9 @@ function ChoiceOptions({
             className={cn(
               "flex min-h-14 items-center gap-3 rounded-xl border-2 border-b-4 px-4 py-2 text-left text-lg transition-colors",
               !checked && "hover:bg-muted",
-              !checked && i === picked && "border-sky-500 bg-sky-500/10",
-              isRight && "border-green-600 bg-green-600/10",
-              isWrongPick && "animate-shake border-red-500 bg-red-500/10",
+              !checked && i === picked && "border-teal bg-teal-soft",
+              isRight && "border-success bg-success-soft",
+              isWrongPick && "animate-shake border-danger bg-danger-soft",
               checked && !isRight && !isWrongPick && "opacity-50",
             )}
           >

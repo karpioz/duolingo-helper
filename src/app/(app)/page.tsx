@@ -40,7 +40,7 @@ export default async function Home() {
       </section>
 
       {due.total > 0 && (
-        <div className="flex flex-col gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-2xl border border-saffron/50 bg-warning-soft p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="font-medium">
               {due.total} word{due.total === 1 ? "" : "s"} due for review
@@ -107,15 +107,15 @@ export default async function Home() {
 function Stat({ label, value, href, color }: { label: string; value: number; href?: string; color?: string | null }) {
   const body = (
     <>
-      <div className="text-2xl font-semibold tabular-nums" style={color ? { color } : undefined}>
+      <div className="font-heading text-3xl font-extrabold tracking-tight tabular-nums" style={color ? { color } : undefined}>
         {value.toLocaleString()}
       </div>
       <div className="text-sm text-muted-foreground">{label}</div>
     </>
   );
-  const cls = "rounded-xl bg-muted p-4";
+  const cls = "rounded-2xl bg-card p-4 shadow-[0_1px_0_var(--border)]";
   return href ? (
-    <Link href={href} className={`${cls} transition-colors hover:bg-muted/70`}>
+    <Link href={href} className={`${cls} transition-colors hover:bg-muted`}>
       {body}
     </Link>
   ) : (

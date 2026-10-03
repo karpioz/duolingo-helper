@@ -18,9 +18,11 @@ export default async function TestPage({ params }: PageProps<"/test/[id]">) {
   if (match) {
     if (match.boardIndex >= match.boards.length) redirect(`/test/${id}/results`);
     return (
-      <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8">
-        <ExamToolbar session={match.session} />
-        <MatchRunner examId={id} boards={match.boards} startBoard={match.boardIndex} course={match.session.course} />
+      <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
+        <div className="flex flex-col gap-6 rounded-[1.75rem] bg-card p-5 shadow-[0_1px_0_var(--border)] sm:p-8">
+          <ExamToolbar session={match.session} />
+          <MatchRunner examId={id} boards={match.boards} startBoard={match.boardIndex} course={match.session.course} />
+        </div>
       </main>
     );
   }
@@ -30,16 +32,18 @@ export default async function TestPage({ params }: PageProps<"/test/[id]">) {
   if (exam.answered >= exam.questions.length) redirect(`/test/${id}/results`);
 
   return (
-    <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 py-8">
-      <ExamToolbar session={exam.session} />
-      <TestRunner
-        examId={id}
-        questions={exam.questions}
-        startIndex={exam.answered}
-        startCorrect={exam.session.correct}
-        course={exam.session.course}
-        tags={tags.filter((t) => t.system).map(({ id, name, color }) => ({ id, name, color }))}
-      />
+    <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
+      <div className="flex flex-col gap-6 rounded-[1.75rem] bg-card p-5 shadow-[0_1px_0_var(--border)] sm:p-8">
+        <ExamToolbar session={exam.session} />
+        <TestRunner
+          examId={id}
+          questions={exam.questions}
+          startIndex={exam.answered}
+          startCorrect={exam.session.correct}
+          course={exam.session.course}
+          tags={tags.filter((t) => t.system).map(({ id, name, color }) => ({ id, name, color }))}
+        />
+      </div>
     </main>
   );
 }

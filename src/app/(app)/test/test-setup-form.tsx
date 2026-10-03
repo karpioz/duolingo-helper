@@ -3,12 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { startExam } from "@/app/actions";
+import { DirectionChoices } from "@/components/direction-choices";
 import { Choice, Field, OptionCard } from "@/components/option-controls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { directionOptions } from "@/lib/courses";
 import { cn } from "@/lib/utils";
 import type { TagWithCount } from "@/server/words";
 
@@ -163,13 +163,7 @@ export function TestSetupForm({
       </Field>
 
       <Field label={mode === "match" ? "Columns" : "Direction"}>
-        <div className="flex flex-wrap gap-2">
-          {directionOptions(course).map((d) => (
-            <Choice key={d.value} selected={direction === d.value} onClick={() => setDirection(d.value)}>
-              {mode === "match" ? d.matchLabel : d.label}
-            </Choice>
-          ))}
-        </div>
+        <DirectionChoices course={course} value={direction} onChange={setDirection} match={mode === "match"} />
       </Field>
 
       <div className={cn("flex items-start gap-3", mode !== "typed" && "hidden")}>

@@ -38,7 +38,7 @@ export default async function MyTestsPage() {
           </Button>
         </div>
       ) : (
-        <ul className="divide-y rounded-xl border">
+        <ul className="divide-y rounded-2xl border bg-card">
           {tests.map((t) => (
             <li key={t.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
               <div className="min-w-0 flex-1">

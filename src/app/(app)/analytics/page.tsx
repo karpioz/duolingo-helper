@@ -189,7 +189,7 @@ export default async function AnalyticsPage() {
 
 function Tile({ value, label, detail }: { value: string; label: string; detail: string }) {
   return (
-    <div className="rounded-xl bg-muted p-4">
+    <div className="rounded-2xl bg-card p-4 shadow-[0_1px_0_var(--border)]">
       <div className="text-2xl font-semibold tabular-nums">{value}</div>
       <div className="text-sm">{label}</div>
       <div className="mt-0.5 text-xs text-muted-foreground">{detail}</div>
