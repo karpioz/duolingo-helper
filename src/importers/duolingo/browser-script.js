@@ -17,48 +17,78 @@
   const MSG_RESULT = "duolingo-helper:result";
   const log = (...args) => console.log("[duolingo-helper]", ...args);
 
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  /** A message pinned to the top of the page (errors would otherwise hide in the console). */
+  function banner(text, color = "#ea2b2b") {
+    document.getElementById("duolingo-helper-banner")?.remove();
+    const el = document.createElement("div");
+    el.id = "duolingo-helper-banner";
+    el.textContent = text;
+    Object.assign(el.style, {
+      position: "fixed", top: "16px", left: "50%", transform: "translateX(-50%)", zIndex: 2147483647,
+      maxWidth: "min(90vw, 560px)", padding: "12px 20px", borderRadius: "12px", background: color, color: "#fff",
+      font: "bold 15px system-ui, sans-serif", textAlign: "center", boxShadow: "0 4px 12px rgba(0,0,0,.2)",
+    });
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 12000);
+  }
+
+  function fail(message) {
+    banner(`Duolingo Helper: ${message}`);
+    throw new Error(message);
+  }
+
   if (!location.pathname.startsWith("/practice-hub/words")) {
-    throw new Error("Open https://www.duolingo.com/practice-hub/words first.");
+    fail("open duolingo.com/practice-hub/words first, then run the script again.");
   }
 
   // 1. Capture the page's own words-list request. Its body carries the course progress that
   //    Duolingo requires; we reuse it and only change the paging parameters.
-  function captureRequest() {
-    return new Promise((resolve, reject) => {
-      const original = window.fetch;
-      const restore = () => (window.fetch = original);
-      const timer = setTimeout(() => {
-        restore();
-        reject(new Error("Timed out waiting for Duolingo's word list request. Reload the page and try again."));
-      }, 15000);
+  //    The request is triggered by clicking "Load more". If every word is already shown there is
+  //    no such button, so we make the words page load again: navigate away and back inside the
+  //    app (no reload), and it fetches its first page anew.
+  async function captureRequest() {
+    const original = window.fetch;
+    let resolveCapture;
+    const captured = new Promise((resolve) => (resolveCapture = resolve));
+    window.fetch = function (input, init) {
+      const url = typeof input === "string" ? input : input.url;
+      if (/\/learned-lexemes\?/.test(url) && init && init.body) {
+        resolveCapture({ url, headers: init.headers, body: init.body });
+      }
+      return original.apply(this, arguments);
+    };
 
-      window.fetch = function (input, init) {
-        const url = typeof input === "string" ? input : input.url;
-        if (/\/learned-lexemes\?/.test(url) && init && init.body) {
-          clearTimeout(timer);
-          restore();
-          resolve({ url, headers: init.headers, body: init.body });
-        }
-        return original.apply(this, arguments);
-      };
-
+    try {
       const loadMore = [...document.querySelectorAll("button, li, [role=button]")].find((el) =>
         /load more/i.test(el.textContent || ""),
       );
-      if (!loadMore) {
-        clearTimeout(timer);
-        restore();
-        reject(new Error('No "Load more" button found. Reload the page (so only the first words are shown) and run again.'));
-        return;
+      if (loadMore) {
+        loadMore.click();
+      } else {
+        log('No "Load more" button (all words already shown): reloading the word list in place.');
+        const here = location.pathname + location.search;
+        history.pushState(null, "", "/practice-hub");
+        window.dispatchEvent(new PopStateEvent("popstate"));
+        await sleep(500);
+        history.pushState(null, "", here);
+        window.dispatchEvent(new PopStateEvent("popstate"));
       }
-      loadMore.click();
-    });
+      const result = await Promise.race([captured, sleep(15000).then(() => null)]);
+      if (!result) {
+        fail("couldn't catch Duolingo's word list request. Reload this page, then run the script again.");
+      }
+      return result;
+    } finally {
+      window.fetch = original;
+    }
   }
 
   const captured = await captureRequest();
   const pageUrl = new URL(captured.url, location.origin);
   const courseMatch = pageUrl.pathname.match(/\/courses\/([^/]+)\/([^/]+)\//);
-  if (!courseMatch) throw new Error(`Unexpected words-list URL: ${pageUrl.pathname}`);
+  if (!courseMatch) fail(`unexpected words-list URL: ${pageUrl.pathname}`);
   const course = `${courseMatch[1]}-${courseMatch[2]}`;
   log(`Captured request for course ${course}, sorted by ${pageUrl.searchParams.get("sortBy")}.`);
 
@@ -74,7 +104,7 @@
       body: captured.body,
       credentials: "include",
     });
-    if (!res.ok) throw new Error(`Duolingo returned ${res.status} at startIndex ${startIndex}`);
+    if (!res.ok) fail(`Duolingo returned ${res.status} while fetching words (at ${startIndex}).`);
     const json = await res.json();
     for (const w of json.learnedLexemes || []) {
       words.push({ text: w.text, translations: w.translations || [], audioURL: w.audioURL || null });
@@ -91,6 +121,7 @@
   window.__duolingoHelperPayload = payload;
 
   // 3. Hand over to the app. Opening a window needs a real click, so show a button.
+  document.getElementById("duolingo-helper-banner")?.remove();
   document.getElementById("duolingo-helper-send")?.remove();
   const button = document.createElement("button");
   button.id = "duolingo-helper-send";

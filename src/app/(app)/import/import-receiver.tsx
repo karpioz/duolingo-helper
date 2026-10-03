@@ -61,12 +61,9 @@ export function ImportReceiver({ currentCourse }: { currentCourse: string }) {
   switch (status.kind) {
     case "waiting":
       return (
-        <p className="text-muted-foreground">
-          Waiting for words from Duolingo… Run the collector script on{" "}
-          <a className="underline" href={`${DUOLINGO_ORIGIN}/practice-hub/words`} target="_blank" rel="noreferrer">
-            duolingo.com/practice-hub/words
-          </a>{" "}
-          and click its “Send to Duolingo Helper” button.
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span className="size-2 animate-pulse rounded-full bg-saffron" aria-hidden />
+          Waiting for words from Duolingo… Follow the steps below; this page fills in when they arrive.
         </p>
       );
     case "saving":
