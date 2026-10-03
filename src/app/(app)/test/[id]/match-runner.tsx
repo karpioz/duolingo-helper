@@ -3,10 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { submitMatchBoard } from "@/app/actions";
+import { Flag } from "@/components/flag";
 import { courseInfo } from "@/lib/courses";
+import { ProgressLine } from "./progress-line";
 import { playAudio } from "@/components/audio-button";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { tileFromKey, tileKey } from "@/lib/match";
 import { cn } from "@/lib/utils";
 import type { MatchBoard } from "@/server/exams";
@@ -163,20 +164,31 @@ export function MatchRunner({
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="space-y-2">
-        <div className="flex justify-between text-sm text-muted-foreground tabular-nums">
-          <span>
+      <ProgressLine
+        done={donePairs}
+        total={totalPairs}
+        note={
+          <>
             Board {boardIndex + 1} of {boards.length}
-          </span>
-          <span>
-            {donePairs}/{totalPairs} pairs
-            {boardMistakes > 0 && ` · ${boardMistakes} mistake${boardMistakes === 1 ? "" : "s"}`}
-          </span>
-        </div>
-        <Progress value={(donePairs / totalPairs) * 100} aria-label="Progress" />
-      </div>
+            {boardMistakes > 0 && (
+              <span className="text-danger">
+                {" "}· {boardMistakes} mistake{boardMistakes === 1 ? "" : "s"}
+              </span>
+            )}
+          </>
+        }
+      />
 
-      <h1 className="text-2xl font-semibold tracking-tight">Select the matching pairs</h1>
+      <h1 className="text-3xl font-extrabold">Select the matching pairs</h1>
+
+      <div className="-mb-4 grid grid-cols-2 gap-x-4 text-sm font-semibold text-muted-foreground sm:gap-x-8">
+        {[spanishLeft ? info.learning : info.from, spanishLeft ? info.from : info.learning].map((lang) => (
+          <span key={lang.code} className="flex items-center justify-center gap-2">
+            <Flag code={lang.code} className="text-base" />
+            {lang.name}
+          </span>
+        ))}
+      </div>
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:gap-x-8">
         {(["left", "right"] as const).map((column) => (
@@ -193,9 +205,9 @@ export function MatchRunner({
                   lang={isSpanish(tile) ? info.learning.code : info.from.code}
                   aria-pressed={state === "selected"}
                   className={cn(
-                    "relative flex min-h-14 items-center justify-center rounded-xl border-2 border-b-4 px-12 py-2 text-center text-base transition-colors",
+                    "relative flex min-h-14 items-center justify-center rounded-2xl border-2 border-b-4 px-12 py-2 text-center text-base font-semibold transition-colors",
                     "focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
-                    state === "idle" && "bg-card hover:bg-muted",
+                    state === "idle" && "border-input bg-card hover:bg-muted",
                     state === "selected" && "border-teal bg-teal-soft text-teal",
                     state === "correct" && "border-success bg-success-soft text-success",
                     state === "wrong" && "animate-shake border-danger bg-danger-soft text-danger",

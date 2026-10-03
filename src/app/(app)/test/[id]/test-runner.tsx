@@ -7,9 +7,9 @@ import { AudioButton, playAudio } from "@/components/audio-button";
 import { TagToggle, type TagInfo } from "@/components/tag-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
 import { displayAnswer } from "@/lib/answers";
 import { courseInfo } from "@/lib/courses";
+import { ProgressLine } from "./progress-line";
 import { Flag } from "@/components/flag";
 import { formatDue } from "@/lib/srs";
 import { cn } from "@/lib/utils";
@@ -160,17 +160,7 @@ export function TestRunner({
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="space-y-2">
-        <div className="flex justify-between text-sm text-muted-foreground tabular-nums">
-          <span>
-            Question {index + 1} of {questions.length}
-          </span>
-          <span>
-            {correct} correct
-          </span>
-        </div>
-        <Progress value={(done / questions.length) * 100} aria-label="Progress" />
-      </div>
+      <ProgressLine done={done} total={questions.length} note={`${correct} correct`} />
 
       <section className="flex flex-col items-center gap-2 text-center">
         <span className="flex items-center gap-2 text-xs font-bold tracking-widest text-teal uppercase">

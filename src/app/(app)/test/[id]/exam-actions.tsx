@@ -1,6 +1,6 @@
 "use client";
 
-import { BookmarkCheck, BookmarkPlus, X } from "lucide-react";
+import { BookmarkCheck, BookmarkPlus } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { cancelTest, saveExamAsTest } from "@/app/actions";
@@ -35,7 +35,13 @@ export function SaveAsTestButton({
     );
   }
   const button = (
-    <Button variant="outline" size="sm" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+    <Button
+      variant="outline"
+      size="sm"
+      aria-expanded={open}
+      onClick={() => setOpen((o) => !o)}
+      className="h-9 border-teal bg-transparent px-3.5 font-semibold text-teal hover:bg-teal-soft hover:text-teal"
+    >
       <BookmarkPlus /> Add to my tests
     </Button>
   );
@@ -85,8 +91,13 @@ export function CancelTestButton({ examId, backTo }: { examId: number; backTo: "
 
   if (!confirming) {
     return (
-      <Button variant="ghost" size="sm" onClick={() => setConfirming(true)}>
-        <X /> Cancel
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setConfirming(true)}
+        className="h-9 bg-muted px-4 font-semibold text-muted-foreground hover:bg-secondary"
+      >
+        Cancel
       </Button>
     );
   }

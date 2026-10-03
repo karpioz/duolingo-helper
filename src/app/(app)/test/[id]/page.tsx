@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import type { ExamSession } from "@/db/schema";
-import { defaultTestName, describeExam } from "@/lib/exam-labels";
+import { Flag } from "@/components/flag";
+import { courseInfo } from "@/lib/courses";
+import { defaultTestName, describeExamSource } from "@/lib/exam-labels";
 import { examPersonalTest, getExam, getMatchExam } from "@/server/exams";
 import { listTags } from "@/server/words";
 import { CancelTestButton, SaveAsTestButton } from "./exam-actions";
@@ -51,10 +53,19 @@ export default async function TestPage({ params }: PageProps<"/test/[id]">) {
 /** What's running, plus "Add to my tests" and "Cancel". */
 function ExamToolbar({ session }: { session: ExamSession }) {
   const { personalTestId, testName } = examPersonalTest(session);
-  const label = describeExam({ ...session, testName });
+  const { learning, from } = courseInfo(session.course);
+  const [first, second] = session.direction === "target_to_source" ? [from, learning] : [learning, from];
   return (
-    <div className="-mb-2 flex flex-wrap items-center gap-1.5">
-      <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{label}</p>
+    <div className="-mb-2 flex flex-wrap items-center gap-2">
+      <p className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
+        <span className="truncate">{describeExamSource({ ...session, testName })} ·</span>
+        <span className="flex items-center gap-1.5">
+          <Flag code={first.code} />
+          {session.direction === "mixed" ? "⇄" : first.name + " →"}
+          <Flag code={second.code} />
+          {session.direction === "mixed" ? "Mixed" : second.name}
+        </span>
+      </p>
       <SaveAsTestButton examId={session.id} defaultName={defaultTestName(session)} savedTestId={personalTestId} />
       <CancelTestButton examId={session.id} backTo={session.source === "personal" ? "personal" : "test"} />
     </div>

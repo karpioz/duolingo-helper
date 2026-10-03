@@ -73,6 +73,18 @@ The Words page looked flat next to the rest. Changes:
 - **Filters:** cream pill search box and selects, and a teal Apply button.
 - The typed test's prompt uses the same solid listen button.
 
+## Follow-up: test screens match the mockup
+
+- **Toolbar:** "Match pairs · Random · 🇪🇸 Spanish → 🇬🇧 English" (flags, ⇄ for mixed; the
+  new `describeExamSource` gives the part before the direction). "Add to my tests" is a teal
+  outline pill, Cancel a filled sand pill (no icon).
+- **Progress** (`ProgressLine`, shared by both runners): one row with the bold count
+  ("4 / 10"), a 10 px terracotta bar, and a teal note on the right ("3 correct", or
+  "Board 1 of 2 · 2 mistakes" in match pairs). `Progress` gained `trackClassName` /
+  `indicatorClassName` for this.
+- **Match pairs:** a bigger heading, flag + language headers over each column (they follow the
+  board's direction), and semibold tiles with sand borders.
+
 ## Next
 
 - Possibly a restyle pass on the remaining pages (results summary, words row density).

@@ -19,13 +19,17 @@ export function directionLabel(direction: string, course: string = DEFAULT_COURS
 
 type ExamLike = { source: string; direction: string; mode?: string; course?: string; testName?: string | null };
 
-/** "Match pairs · Due for review · Spanish → English"; personal tests show their name in place of "Personal". */
-export function describeExam({ source, direction, mode, course, testName }: ExamLike) {
+/** "Match pairs · Due for review": the exam's type and word source, without the direction. */
+export function describeExamSource({ source, mode, testName }: Omit<ExamLike, "direction">) {
   const from = source === "personal" && testName ? testName : (SOURCE_LABELS[source] ?? source);
-  const base = `${from} · ${directionLabel(direction, course)}`;
-  if (mode === "match") return `Match pairs · ${base}`;
-  if (mode === "choice") return `Multiple choice · ${base}`;
-  return base;
+  if (mode === "match") return `Match pairs · ${from}`;
+  if (mode === "choice") return `Multiple choice · ${from}`;
+  return from;
+}
+
+/** "Match pairs · Due for review · Spanish → English"; personal tests show their name in place of "Personal". */
+export function describeExam(exam: ExamLike) {
+  return `${describeExamSource(exam)} · ${directionLabel(exam.direction, exam.course)}`;
 }
 
 /** Name suggested when saving a generated exam as a personal test: "Due for review · Spanish → English · 3 Oct". */
