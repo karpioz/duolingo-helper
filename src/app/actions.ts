@@ -2,10 +2,13 @@
 
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db";
 import { examSessions, wordTags } from "@/db/schema";
+import { isCourseId } from "@/lib/courses";
+import { COURSE_COOKIE } from "@/server/course";
 import { assertUser } from "@/server/session";
 import { setPreferredTranslation } from "@/server/words";
 import { cancelExam, createExam, examOptionsSchema, recordAnswer, recordMatchBoard, type AnswerResult } from "@/server/exams";
@@ -102,10 +105,18 @@ export async function setMainMeaning(wordId: number, text: string | null): Promi
   return { ok: await setPreferredTranslation(id, meaning) };
 }
 
-/** Test creator: words matching `q` (recently learned words when empty). */
-export async function findWords(q: string): Promise<PickedWord[]> {
+/** Test creator: words of `course` matching `q` (recently learned words when empty). */
+export async function findWords(q: string, course: string): Promise<PickedWord[]> {
   await assertUser();
-  return searchWords(z.string().max(100).catch("").parse(q));
+  return searchWords(z.string().max(100).catch("").parse(q), z.string().refine(isCourseId).parse(course));
+}
+
+/** Switches the course everything is shown for (remembered in a cookie for a year). */
+export async function switchCourse(course: string): Promise<void> {
+  await assertUser();
+  const id = z.string().refine(isCourseId).parse(course);
+  (await cookies()).set(COURSE_COOKIE, id, { maxAge: 60 * 60 * 24 * 365, path: "/", sameSite: "lax" });
+  revalidatePath("/", "layout");
 }
 
 /**
@@ -154,6 +165,7 @@ export async function startPersonal(id: number): Promise<{ error: string }> {
       source: "personal",
       direction: test.direction,
       personalTestId: test.id,
+      course: test.course,
     }),
     { testName: test.name },
   );

@@ -4,12 +4,14 @@ import { z } from "zod";
 import { db } from "@/db";
 import { examAnswers, examSessions, reviewStates, translations, wordTags, words, type ExamSession } from "@/db/schema";
 import { checkAnswer, type CheckResult, type MatchKind } from "@/lib/answers";
+import { isCourseId } from "@/lib/courses";
 import { optionLabel, pickDistractors } from "@/lib/choice";
 import { buildBoards, labelFirst, labelOf } from "@/lib/match";
 import { gradeFor } from "@/lib/srs";
 import { personalTestWordIds } from "./personal-tests";
 import { applyReview } from "./review";
-import { COURSE, WORD_ID, alphaKey, latestAnswers, wordTagIds, wordTranslations } from "./words";
+import { currentCourse } from "./course";
+import { WORD_ID, alphaKey, latestAnswers, wordTagIds, wordTranslations } from "./words";
 
 export type Direction = "source_to_target" | "target_to_source";
 
@@ -31,6 +33,8 @@ export const examOptionsSchema = z.object({
   wordIds: z.array(z.number().int()).max(200).default([]),
   /** Personal only: the test to run. */
   personalTestId: z.number().int().optional(),
+  /** Course to draw from; defaults to the current one (retests and personal tests pass theirs). */
+  course: z.string().refine(isCourseId).optional(),
 });
 export type ExamOptions = z.infer<typeof examOptionsSchema>;
 
@@ -57,8 +61,8 @@ function shuffle<T>(items: T[]): T[] {
   return a;
 }
 
-async function pickWordIds(o: ExamOptions): Promise<number[]> {
-  const base = eq(words.course, COURSE);
+async function pickWordIds(o: ExamOptions, course: string): Promise<number[]> {
+  const base = eq(words.course, course);
   const ids = (rows: { id: number }[]) => rows.map((r) => r.id);
 
   switch (o.source) {
@@ -94,12 +98,12 @@ async function pickWordIds(o: ExamOptions): Promise<number[]> {
       );
     case "missed": {
       const res = await db.execute<{ word_id: number }>(
-        sql`select word_id from (${latestAnswers()}) x where not x.is_correct order by created_at desc limit ${o.count}`,
+        sql`select word_id from (${latestAnswers(course)}) x where not x.is_correct order by created_at desc limit ${o.count}`,
       );
       return res.rows.map((r) => r.word_id);
     }
     case "due":
-      return (await dueWords(o)).map((d) => d.wordId);
+      return (await dueWords(o, course)).map((d) => d.wordId);
     case "retest":
       return o.wordIds.slice(0, o.count);
     case "personal":
@@ -111,13 +115,13 @@ async function pickWordIds(o: ExamOptions): Promise<number[]> {
  * Words due for review, most overdue first, one entry per word (its most overdue direction).
  * A fixed exam direction only considers that direction.
  */
-async function dueWords(o: ExamOptions): Promise<{ wordId: number; direction: Direction }[]> {
+async function dueWords(o: ExamOptions, course: string): Promise<{ wordId: number; direction: Direction }[]> {
   const dir = o.direction === "mixed" ? sql`true` : sql`rs.direction = ${o.direction}`;
   const res = await db.execute<{ word_id: number; direction: Direction }>(sql`
     select word_id, direction from (
       select distinct on (rs.word_id) rs.word_id, rs.direction, rs.due
       from ${reviewStates} rs join ${words} w on w.id = rs.word_id
-      where w.course = ${COURSE} and rs.due <= now() and ${dir}
+      where w.course = ${course} and rs.due <= now() and ${dir}
       order by rs.word_id, rs.due
     ) x order by due limit ${o.count}`);
   return res.rows.map((r) => ({ wordId: r.word_id, direction: r.direction }));
@@ -127,10 +131,11 @@ const randomDirection = (): Direction => (Math.random() < 0.5 ? "source_to_targe
 
 /** Creates an exam session; returns its id, or null if no words match. */
 export async function createExam(o: ExamOptions, extra: { testName?: string } = {}): Promise<number | null> {
+  const course = o.course ?? (await currentCourse());
   // Due reviews keep their order (most overdue first) and the direction that is due.
-  const due = o.source === "due" ? await dueWords(o) : null;
+  const due = o.source === "due" ? await dueWords(o, course) : null;
   const dueDirection = new Map(due?.map((d) => [d.wordId, d.direction]));
-  const wordIds = due ? due.map((d) => d.wordId) : shuffle(await pickWordIds(o));
+  const wordIds = due ? due.map((d) => d.wordId) : shuffle(await pickWordIds(o, course));
   if (wordIds.length === 0) return null;
   const fixed = o.direction === "mixed" ? null : o.direction;
 
@@ -151,7 +156,7 @@ export async function createExam(o: ExamOptions, extra: { testName?: string } = 
     });
   } else {
     questions = wordIds.map((wordId) => ({ wordId, direction: dueDirection.get(wordId) ?? fixed ?? randomDirection() }));
-    if (o.mode === "choice") questions = await withChoices(questions);
+    if (o.mode === "choice") questions = await withChoices(questions, course);
   }
 
   const options: StoredOptions = {
@@ -165,17 +170,17 @@ export async function createExam(o: ExamOptions, extra: { testName?: string } = 
   };
   const [session] = await db
     .insert(examSessions)
-    .values({ course: COURSE, mode: o.mode, direction: o.direction, source: o.source, size: questions.length, options })
+    .values({ course, mode: o.mode, direction: o.direction, source: o.source, size: questions.length, options })
     .returning({ id: examSessions.id });
   return session.id;
 }
 
 /** Adds options to each question, drawn from the whole course so there's plenty to choose from. */
-async function withChoices(questions: Question[]): Promise<Question[]> {
+async function withChoices(questions: Question[], course: string): Promise<Question[]> {
   const pool = await db
     .select({ id: words.id, text: words.text, translations: wordTranslations(), preferred: words.preferredTranslation })
     .from(words)
-    .where(eq(words.course, COURSE));
+    .where(eq(words.course, course));
   const byId = new Map(pool.map((w) => [w.id, w]));
   return questions
     .filter((q) => byId.has(q.wordId))
@@ -243,10 +248,10 @@ export async function getExam(id: number) {
  * Other words in the course that fit every translation of `wordId`: for English → Spanish,
  * "(you) learned, learned" could be several Spanish forms, and any of them is a fair answer.
  */
-async function alternativeWords(wordId: number): Promise<string[]> {
+async function alternativeWords(wordId: number, course: string): Promise<string[]> {
   const res = await db.execute<{ text: string }>(sql`
     select w2.text from ${words} w2
-    where w2.course = ${COURSE} and w2.id <> ${wordId}
+    where w2.course = ${course} and w2.id <> ${wordId}
       and exists (select 1 from ${translations} t where t.word_id = ${wordId})
       and not exists (
         select 1 from ${translations} t where t.word_id = ${wordId}
@@ -309,7 +314,7 @@ export async function recordAnswer(
     if (question.direction === "source_to_target") {
       accepted = word.translations;
     } else {
-      alternatives = await alternativeWords(question.wordId);
+      alternatives = await alternativeWords(question.wordId, exam.session.course);
       accepted = [word.text, ...alternatives];
     }
     check = checkAnswer(given, accepted, { lenient: exam.lenient });
@@ -391,10 +396,13 @@ export async function recentExams(limit = 5) {
       correct: examSessions.correct,
       startedAt: examSessions.startedAt,
       finishedAt: examSessions.finishedAt,
+      course: examSessions.course,
       testName: sql<string | null>`${examSessions.options}->>'testName'`,
     })
     .from(examSessions)
-    .where(and(isNotNull(examSessions.finishedAt), ne(examSessions.size, 0)))
+    .where(
+      and(isNotNull(examSessions.finishedAt), ne(examSessions.size, 0), eq(examSessions.course, await currentCourse())),
+    )
     .orderBy(desc(examSessions.startedAt))
     .limit(limit);
 }

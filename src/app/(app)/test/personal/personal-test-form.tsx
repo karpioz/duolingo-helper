@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { displayAnswer } from "@/lib/answers";
+import { courseInfo, directionOptions } from "@/lib/courses";
 import { labelOf } from "@/lib/match";
 import { cn } from "@/lib/utils";
 import type { PickedWord } from "@/server/personal-tests";
@@ -23,23 +24,21 @@ const MAX_WORDS = 200;
 const MODES: { value: Mode; label: string; hint: string }[] = [
   { value: "typed", label: "Type answers", hint: "Write the translation" },
   { value: "choice", label: "Multiple choice", hint: "Pick the translation from 4 options" },
-  { value: "match", label: "Match pairs", hint: "Pair Spanish and English tiles, 5 at a time" },
-];
-
-const DIRECTIONS: { value: Direction; label: string; matchLabel: string }[] = [
-  { value: "source_to_target", label: "Spanish → English", matchLabel: "Spanish | English" },
-  { value: "target_to_source", label: "English → Spanish", matchLabel: "English | Spanish" },
-  { value: "mixed", label: "Mixed", matchLabel: "Mixed" },
+  { value: "match", label: "Match pairs", hint: "Pair the matching tiles, 5 at a time" },
 ];
 
 export function PersonalTestForm({
   id,
+  course,
   initial,
 }: {
   /** Editing an existing test; omitted when creating one. */
   id?: number;
+  /** The test's course: words are searched in it. */
+  course: string;
   initial?: { name: string; mode: Mode; direction: Direction; words: PickedWord[] };
 }) {
+  const info = courseInfo(course);
   const [name, setName] = useState(initial?.name ?? "");
   const [mode, setMode] = useState<Mode>(initial?.mode ?? "typed");
   const [direction, setDirection] = useState<Direction>(initial?.direction ?? "source_to_target");
@@ -57,7 +56,7 @@ export function PersonalTestForm({
     let stale = false;
     const timer = setTimeout(async () => {
       try {
-        const found = await findWords(query);
+        const found = await findWords(query, course);
         if (!stale) setSearch({ q: query, words: found });
       } catch {
         if (!stale) setSearch({ q: query, words: [] });
@@ -67,7 +66,7 @@ export function PersonalTestForm({
       stale = true;
       clearTimeout(timer);
     };
-  }, [query]);
+  }, [query, course]);
 
   const results = search?.words ?? null;
   const searching = search?.q !== query;
@@ -139,7 +138,7 @@ export function PersonalTestForm({
 
       <Field label={mode === "match" ? "Columns" : "Direction"}>
         <div className="flex flex-wrap gap-2">
-          {DIRECTIONS.map((d) => (
+          {directionOptions(course).map((d) => (
             <Choice key={d.value} selected={direction === d.value} onClick={() => setDirection(d.value)}>
               {mode === "match" ? d.matchLabel : d.label}
             </Choice>
@@ -233,7 +232,7 @@ export function PersonalTestForm({
                 if (!searching && unpickedResults[0] && !full) add([unpickedResults[0]]);
               }
             }}
-            placeholder="Search Spanish or English…"
+            placeholder={`Search ${info.learning.name} or ${info.from.name}…`}
             className="pl-8"
             aria-label="Search words"
           />

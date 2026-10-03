@@ -3,7 +3,8 @@ import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { examSessions, personalTestWords, personalTests, words, type ExamSession } from "@/db/schema";
-import { COURSE, alphaKey, matchesQuery, wordTranslations } from "./words";
+import { currentCourse } from "./course";
+import { alphaKey, matchesQuery, wordTranslations } from "./words";
 
 /** Exams take at most 200 words, so a personal test does too. */
 export const MAX_PERSONAL_WORDS = 200;
@@ -38,10 +39,10 @@ const wordColumns = {
   preferred: words.preferredTranslation,
 };
 
-/** Words for the test creator: exact and prefix matches first, then most recently learned. */
-export async function searchWords(q: string, limit = 20): Promise<PickedWord[]> {
+/** Words of `course` for the test creator: exact and prefix matches first, then most recently learned. */
+export async function searchWords(q: string, course: string, limit = 20): Promise<PickedWord[]> {
   const query = q.trim();
-  const base = eq(words.course, COURSE);
+  const base = eq(words.course, course);
   if (!query) {
     return db.select(wordColumns).from(words).where(base).orderBy(sql`${words.duoRank} asc nulls last`).limit(limit);
   }
@@ -92,7 +93,7 @@ export async function listPersonalTests(): Promise<PersonalTestSummary[]> {
       where (e.options->>'personalTestId')::int = p.id and e.finished_at is not null
       order by e.finished_at desc limit 1
     ) r on true
-    where p.course = ${COURSE}
+    where p.course = ${await currentCourse()}
     order by p.updated_at desc`);
   return res.rows.map((r) => ({
     id: r.id,
@@ -128,15 +129,24 @@ export async function personalTestWordIds(id: number): Promise<number[]> {
   return rows.map((r) => r.id);
 }
 
-/** Creates (no `id`) or replaces a test; returns its id, or null if `id` doesn't exist. */
-export async function savePersonalTest(input: PersonalTestInput, id?: number): Promise<number | null> {
+/**
+ * Creates (no `id`) or replaces a test; returns its id, or null if `id` doesn't exist. New tests
+ * go in `course` (default: the current one); an existing test keeps its own.
+ */
+export async function savePersonalTest(input: PersonalTestInput, id?: number, course?: string): Promise<number | null> {
+  let testCourse = course ?? (await currentCourse());
+  if (id !== undefined) {
+    const [existing] = await db.select({ course: personalTests.course }).from(personalTests).where(eq(personalTests.id, id));
+    if (!existing) return null;
+    testCourse = existing.course;
+  }
   // Ignore ids that aren't words in this course (e.g. deleted since the page loaded).
   const valid = new Set(
     (
       await db
         .select({ id: words.id })
         .from(words)
-        .where(and(eq(words.course, COURSE), inArray(words.id, input.wordIds)))
+        .where(and(eq(words.course, testCourse), inArray(words.id, input.wordIds)))
     ).map((r) => r.id),
   );
   const wordIds = input.wordIds.filter((w) => valid.has(w));
@@ -147,7 +157,7 @@ export async function savePersonalTest(input: PersonalTestInput, id?: number): P
     if (id === undefined) {
       [{ id: testId }] = await tx
         .insert(personalTests)
-        .values({ course: COURSE, ...fields })
+        .values({ course: testCourse, ...fields })
         .returning({ id: personalTests.id });
     } else {
       const updated = await tx
@@ -178,7 +188,7 @@ export async function savePersonalFromExam(session: ExamSession, name: string): 
   const options = session.options as { questions: { wordId: number }[] };
   const wordIds = [...new Set(options.questions.map((q) => q.wordId))].slice(0, MAX_PERSONAL_WORDS);
   const input = personalTestSchema.parse({ name, mode: session.mode, direction: session.direction, wordIds });
-  const testId = (await savePersonalTest(input))!;
+  const testId = (await savePersonalTest(input, undefined, session.course))!;
   await db
     .update(examSessions)
     .set({

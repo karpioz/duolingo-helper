@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { reviewStates, words } from "@/db/schema";
 import { reviewCard } from "@/lib/srs";
 import { APP_TIMEZONE } from "./stats";
-import { COURSE } from "./words";
+import { currentCourse } from "./course";
 
 type Direction = "source_to_target" | "target_to_source";
 /** A transaction or the db itself. */
@@ -50,13 +50,14 @@ export async function dueCounts() {
            count(*) filter (where rs.direction = 'source_to_target')::int as source_to_target,
            count(*) filter (where rs.direction = 'target_to_source')::int as target_to_source
     from ${reviewStates} rs join ${words} w on w.id = rs.word_id
-    where w.course = ${COURSE} and rs.due <= now()`);
+    where w.course = ${await currentCourse()} and rs.due <= now()`);
   return res.rows[0];
 }
 
 /** Reviews (word × direction) due on each of the next `days` local days; today includes overdue. */
 export async function reviewForecast(days = 14) {
   const tz = APP_TIMEZONE;
+  const course = await currentCourse();
   const res = await db.execute<{ day: string; reviews: number }>(sql`
     with days as (
       select generate_series(0, ${days - 1}) as n
@@ -64,8 +65,8 @@ export async function reviewForecast(days = 14) {
       select (now() at time zone ${tz})::date as d
     )
     select to_char(today.d + days.n, 'YYYY-MM-DD') as day,
-           (select count(*)::int from ${reviewStates} rs
-             where case when days.n = 0
+           (select count(*)::int from ${reviewStates} rs join ${words} w on w.id = rs.word_id
+             where w.course = ${course} and case when days.n = 0
                         then (rs.due at time zone ${tz})::date <= today.d
                         else (rs.due at time zone ${tz})::date = today.d + days.n end) as reviews
     from days, today

@@ -3,8 +3,8 @@ import { and, asc, count, desc, eq, exists, ilike, or, sql, type SQL } from "dri
 import { db } from "@/db";
 import { examAnswers, reviewStates, tags, translations, wordTags, words } from "@/db/schema";
 import { formatDue } from "@/lib/srs";
+import { currentCourse } from "./course";
 
-export const COURSE = "es-en";
 export const PAGE_SIZE = 100;
 
 export type WordSort = "recent" | "alphabetical";
@@ -63,7 +63,7 @@ export function matchesQuery(q: string): SQL {
 
 export async function listWords(opts: { q?: string; sort?: WordSort; tagId?: number; page?: number }) {
   const page = Math.max(1, opts.page ?? 1);
-  const filters: SQL[] = [eq(words.course, COURSE)];
+  const filters: SQL[] = [eq(words.course, await currentCourse())];
 
   const q = opts.q?.trim();
   if (q) filters.push(matchesQuery(q));
@@ -126,29 +126,42 @@ export async function setPreferredTranslation(wordId: number, text: string | nul
   return true;
 }
 
+/** All tags, with how many words of the current course carry each. */
 export async function listTags(): Promise<TagWithCount[]> {
+  const course = await currentCourse();
   return db
     .select({
       id: tags.id,
       name: tags.name,
       color: tags.color,
       system: tags.system,
-      words: sql<number>`(select count(*)::int from ${wordTags} wt where wt.tag_id = ${tags.id})`,
+      words: sql<number>`(select count(*)::int from ${wordTags} wt join ${words} w on w.id = wt.word_id
+        where wt.tag_id = ${tags.id} and w.course = ${course})`,
     })
     .from(tags)
     .orderBy(desc(tags.system), asc(tags.id));
 }
 
 export async function libraryStats() {
+  const course = await currentCourse();
   const [[w], [t], [missed]] = await Promise.all([
-    db.select({ n: count() }).from(words).where(eq(words.course, COURSE)),
-    db.select({ n: count() }).from(translations),
-    db.execute<{ n: number }>(sql`select count(*)::int as n from (${latestAnswers()}) x where not x.is_correct`).then((r) => r.rows),
+    db.select({ n: count() }).from(words).where(eq(words.course, course)),
+    db
+      .select({ n: count() })
+      .from(translations)
+      .innerJoin(words, eq(words.id, translations.wordId))
+      .where(eq(words.course, course)),
+    db
+      .execute<{ n: number }>(sql`select count(*)::int as n from (${latestAnswers(course)}) x where not x.is_correct`)
+      .then((r) => r.rows),
   ]);
   return { words: w.n, translations: t.n, missed: missed.n };
 }
 
-/** Latest answer per word (any direction): word_id, is_correct, created_at. */
-export function latestAnswers() {
-  return sql`select distinct on (word_id) word_id, is_correct, created_at from ${examAnswers} order by word_id, created_at desc`;
+/** Latest answer per word of `course` (any direction): word_id, is_correct, created_at. */
+export function latestAnswers(course: string) {
+  return sql`select distinct on (a.word_id) a.word_id, a.is_correct, a.created_at
+    from ${examAnswers} a join ${words} w on w.id = a.word_id
+    where w.course = ${course}
+    order by a.word_id, a.created_at desc`;
 }

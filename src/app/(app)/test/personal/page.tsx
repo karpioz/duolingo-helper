@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { DIRECTION_LABELS } from "@/lib/exam-labels";
+import { directionLabel } from "@/lib/exam-labels";
+import { currentCourse } from "@/server/course";
 import { listPersonalTests } from "@/server/personal-tests";
 import { DeleteTestButton, StartTestButton } from "./test-actions";
 
@@ -10,7 +11,7 @@ export const metadata: Metadata = { title: "My tests · Duolingo Helper" };
 const MODE_LABELS = { typed: "Type answers", choice: "Multiple choice", match: "Match pairs" } as const;
 
 export default async function MyTestsPage() {
-  const tests = await listPersonalTests();
+  const [tests, course] = await Promise.all([listPersonalTests(), currentCourse()]);
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col gap-6 px-4 py-8">
@@ -45,7 +46,7 @@ export default async function MyTestsPage() {
                   {t.name}
                 </Link>
                 <div className="text-sm text-muted-foreground">
-                  {MODE_LABELS[t.mode]} · {DIRECTION_LABELS[t.direction]} · {t.words} {t.words === 1 ? "word" : "words"}
+                  {MODE_LABELS[t.mode]} · {directionLabel(t.direction, course)} · {t.words} {t.words === 1 ? "word" : "words"}
                 </div>
                 {t.lastRun && (
                   <Link href={`/test/${t.lastRun.id}/results`} className="text-xs text-muted-foreground hover:underline">

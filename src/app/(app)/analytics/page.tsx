@@ -8,7 +8,8 @@ import { TagToggle } from "@/components/tag-toggle";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { displayAnswer } from "@/lib/answers";
-import { DIRECTION_LABELS } from "@/lib/exam-labels";
+import { directionLabel } from "@/lib/exam-labels";
+import { currentCourse } from "@/server/course";
 import {
   accuracyByDirection,
   coverage,
@@ -27,7 +28,7 @@ const pct = (part: number, whole: number) => (whole ? Math.round((part / whole) 
 
 export default async function AnalyticsPage() {
   await connection();
-  const [{ activity, today }, t, directions, tests, cov, hard, tags, due, forecast] = await Promise.all([
+  const [{ activity, today }, t, directions, tests, cov, hard, tags, due, forecast, course] = await Promise.all([
     dailyActivity(),
     totals(),
     accuracyByDirection(),
@@ -37,6 +38,7 @@ export default async function AnalyticsPage() {
     listTags(),
     dueCounts(),
     reviewForecast(),
+    currentCourse(),
   ]);
   const streak = streaks(activity, today);
   const systemTags = tags.filter((tag) => tag.system).map(({ id, name, color }) => ({ id, name, color }));
@@ -100,7 +102,7 @@ export default async function AnalyticsPage() {
               return (
                 <div key={dir} className="space-y-1.5">
                   <div className="flex items-baseline justify-between text-sm">
-                    <span>{DIRECTION_LABELS[dir]}</span>
+                    <span>{directionLabel(dir, course)}</span>
                     <span className="font-semibold tabular-nums">{value == null ? "—" : `${value}%`}</span>
                   </div>
                   <div className="h-2 rounded-full bg-[var(--viz-empty)]">

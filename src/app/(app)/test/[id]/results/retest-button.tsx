@@ -10,12 +10,14 @@ export function RetestButton({
   mode,
   lenient,
   label,
+  course,
 }: {
   wordIds: number[];
   direction: "source_to_target" | "target_to_source" | "mixed";
   mode: "typed" | "choice" | "match";
   lenient: boolean;
   label: string;
+  course: string;
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +28,7 @@ export function RetestButton({
         disabled={pending}
         onClick={() =>
           startTransition(async () => {
-            const res = await startExam({ mode, count: wordIds.length, source: "retest", direction, lenient, wordIds });
+            const res = await startExam({ mode, count: wordIds.length, source: "retest", direction, lenient, wordIds, course });
             if (res?.error) setError(res.error);
           })
         }

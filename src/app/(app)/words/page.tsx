@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AudioButton } from "@/components/audio-button";
 import { MeaningPicker } from "@/components/meaning-picker";
+import { courseInfo } from "@/lib/courses";
+import { currentCourse } from "@/server/course";
 import { TagToggle } from "@/components/tag-toggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +22,12 @@ export default async function WordsPage({ searchParams }: PageProps<"/words">) {
   const tagId = Number(one(sp.tag)) || undefined;
   const page = Number(one(sp.page)) || 1;
 
-  const [{ rows, total, pages }, tags] = await Promise.all([listWords({ q, sort, tagId, page }), listTags()]);
+  const [{ rows, total, pages }, tags, course] = await Promise.all([
+    listWords({ q, sort, tagId, page }),
+    listTags(),
+    currentCourse(),
+  ]);
+  const info = courseInfo(course);
 
   const hrefFor = (p: number) => {
     const params = new URLSearchParams();
@@ -40,7 +47,7 @@ export default async function WordsPage({ searchParams }: PageProps<"/words">) {
       </div>
 
       <form className="flex flex-wrap items-center gap-2" action="/words">
-        <Input name="q" defaultValue={q} placeholder="Search Spanish or English…" className="w-full sm:w-64" />
+        <Input name="q" defaultValue={q} placeholder={`Search ${info.learning.name} or ${info.from.name}…`} className="w-full sm:w-64" />
         <select name="sort" defaultValue={sort} className={selectClass} aria-label="Sort">
           <option value="recent">Recently learned</option>
           <option value="alphabetical">Alphabetical</option>

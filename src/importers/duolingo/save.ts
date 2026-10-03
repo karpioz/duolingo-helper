@@ -63,6 +63,7 @@ export async function saveDuolingoImport(data: DuolingoImport): Promise<ImportRe
     }
 
     return {
+      course: data.course,
       received: data.words.length,
       unique: incoming.length,
       inserted,

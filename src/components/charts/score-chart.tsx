@@ -113,7 +113,7 @@ export function ScoreChart({ tests }: { tests: TestScore[] }) {
             <div className="font-medium tabular-nums">
               {hovered.correct}/{hovered.size} · {Math.round(hovered.pct)}%
             </div>
-            <div className="opacity-70">{describeExam(hovered.source, hovered.direction, hovered.mode)}</div>
+            <div className="opacity-70">{describeExam(hovered)}</div>
             <div className="opacity-70">
               {formatDate(hovered.startedAt)}, {hovered.startedAt.slice(11)}
             </div>
@@ -138,7 +138,7 @@ export function ScoreChart({ tests }: { tests: TestScore[] }) {
                 </td>
                 <td className="py-1">
                   <Link className="hover:underline" href={`/test/${p.id}/results`}>
-                    {describeExam(p.source, p.direction, p.mode)}
+                    {describeExam(p)}
                   </Link>
                 </td>
                 <td className="py-1 text-right">

@@ -2,7 +2,8 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { examAnswers, examSessions, words } from "@/db/schema";
-import { COURSE, latestAnswers } from "./words";
+import { currentCourse } from "./course";
+import { latestAnswers } from "./words";
 
 /** Days are bucketed in this time zone (answers are stored in UTC). */
 export const APP_TIMEZONE = process.env.APP_TIMEZONE ?? "Europe/London";
@@ -13,7 +14,10 @@ async function rows<T>(query: ReturnType<typeof sql>) {
   return (await db.execute<T & Record<string, unknown>>(query)).rows as T[];
 }
 
-/** Answers per local day over the last `days` days, plus today's local date (YYYY-MM-DD). */
+/**
+ * Answers per local day over the last `days` days, plus today's local date (YYYY-MM-DD).
+ * Across all courses: studying any language keeps the streak going.
+ */
 export async function dailyActivity(days = 371) {
   const tz = APP_TIMEZONE;
   const [activity, [{ today }]] = await Promise.all([
@@ -29,7 +33,12 @@ export async function dailyActivity(days = 371) {
   return { activity, today };
 }
 
+/** Answers to words of `course`, as a subquery with exam_answers' columns. */
+const courseAnswers = (course: string) =>
+  sql`(select a.* from ${examAnswers} a join ${words} w on w.id = a.word_id where w.course = ${course})`;
+
 export async function totals() {
+  const course = await currentCourse();
   const [t] = await rows<{
     answers: number;
     correct: number;
@@ -42,16 +51,16 @@ export async function totals() {
            count(*) filter (where is_correct)::int as correct,
            count(*) filter (where is_almost)::int as almost,
            count(distinct word_id)::int as words,
-           (select count(*)::int from ${examSessions} where finished_at is not null) as tests,
+           (select count(*)::int from ${examSessions} where finished_at is not null and course = ${course}) as tests,
            percentile_cont(0.5) within group (order by response_ms)::int as "medianMs"
-    from ${examAnswers}`);
+    from ${courseAnswers(course)} a`);
   return t;
 }
 
 export async function accuracyByDirection() {
   return rows<{ direction: "source_to_target" | "target_to_source"; answers: number; correct: number }>(sql`
     select direction, count(*)::int as answers, count(*) filter (where is_correct)::int as correct
-    from ${examAnswers} group by direction`);
+    from ${courseAnswers(await currentCourse())} a group by direction`);
 }
 
 export type TestScore = {
@@ -62,26 +71,28 @@ export type TestScore = {
   source: string;
   direction: string;
   mode: string;
+  course: string;
 };
 
 /** Most recent finished tests, oldest first. */
 export async function testScores(limit = 30) {
   const list = await rows<TestScore>(sql`
     select id, to_char(started_at at time zone ${APP_TIMEZONE}, 'YYYY-MM-DD"T"HH24:MI') as "startedAt",
-           size, correct, source, direction, mode
+           size, correct, source, direction, mode, course
     from ${examSessions}
-    where finished_at is not null and size > 0
+    where finished_at is not null and size > 0 and course = ${await currentCourse()}
     order by started_at desc limit ${limit}`);
   return list.reverse();
 }
 
 /** Word coverage by latest answer: known (right), missed (wrong), or never practised. */
 export async function coverage() {
+  const course = await currentCourse();
   const [c] = await rows<{ total: number; known: number; missed: number }>(sql`
-    select (select count(*)::int from ${words} where course = ${COURSE}) as total,
+    select (select count(*)::int from ${words} where course = ${course}) as total,
            count(*) filter (where x.is_correct)::int as known,
            count(*) filter (where not x.is_correct)::int as missed
-    from (${latestAnswers()}) x`);
+    from (${latestAnswers(course)}) x`);
   return { ...c, unpractised: c.total - c.known - c.missed };
 }
 
@@ -97,6 +108,7 @@ export type HardWord = {
 
 /** Words answered wrong most often (at least one wrong answer). */
 export async function hardestWords(limit = 10) {
+  const course = await currentCourse();
   return rows<HardWord>(sql`
     select w.id, w.text,
            coalesce((select array_agg(t.text order by t.position) from translations t where t.word_id = w.id), '{}') as translations,
@@ -104,10 +116,10 @@ export async function hardestWords(limit = 10) {
            a.answers, a.wrong, not l.is_correct as "lastWrong"
     from (
       select word_id, count(*)::int as answers, count(*) filter (where not is_correct)::int as wrong
-      from ${examAnswers} group by word_id
+      from ${courseAnswers(course)} x group by word_id
     ) a
     join ${words} w on w.id = a.word_id
-    join (${latestAnswers()}) l on l.word_id = a.word_id
+    join (${latestAnswers(course)}) l on l.word_id = a.word_id
     where a.wrong > 0
     order by a.wrong desc, a.wrong::float / a.answers desc, w.text
     limit ${limit}`);

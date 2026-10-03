@@ -29,6 +29,8 @@ export const duolingoImportSchema = z.object({
 export type DuolingoImport = z.infer<typeof duolingoImportSchema>;
 
 export type ImportResult = {
+  /** The course the words were saved to, e.g. "tr-en". */
+  course: string;
   received: number;
   unique: number;
   inserted: number;

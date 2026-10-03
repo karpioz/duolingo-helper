@@ -16,12 +16,12 @@ async function main() {
   const pt = await import("@/server/personal-tests");
   const exams = await import("@/server/exams");
 
-  const found = await pt.searchWords("comer");
+  const found = await pt.searchWords("comer", "es-en");
   console.log("search 'comer':", found.slice(0, 5).map((w) => w.text));
   assert.ok(found.length > 0);
-  const recent = await pt.searchWords("");
+  const recent = await pt.searchWords("", "es-en");
   assert.equal(recent.length, 20);
-  const english = await pt.searchWords("learn");
+  const english = await pt.searchWords("learn", "es-en");
   console.log("search 'learn':", english.slice(0, 5).map((w) => `${w.text} (${w.translations[0]})`));
 
   const ids = recent.slice(0, 7).map((w) => w.id);

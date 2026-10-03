@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { directionOptions } from "@/lib/courses";
 import { cn } from "@/lib/utils";
 import type { TagWithCount } from "@/server/words";
 
@@ -18,7 +19,7 @@ type Mode = "typed" | "choice" | "match";
 const MODES: { value: Mode; label: string; hint: string }[] = [
   { value: "typed", label: "Type answers", hint: "Write the translation" },
   { value: "choice", label: "Multiple choice", hint: "Pick the translation from 4 options" },
-  { value: "match", label: "Match pairs", hint: "Pair Spanish and English tiles, 5 at a time" },
+  { value: "match", label: "Match pairs", hint: "Pair the matching tiles, 5 at a time" },
 ];
 
 const COUNTS = [10, 20] as const;
@@ -32,11 +33,6 @@ const SOURCES: { value: Source; label: string; hint: string }[] = [
   { value: "missed", label: "Missed last time", hint: "Words you got wrong most recently" },
 ];
 
-const DIRECTIONS: { value: Direction; label: string; matchLabel: string }[] = [
-  { value: "source_to_target", label: "Spanish → English", matchLabel: "Spanish | English" },
-  { value: "target_to_source", label: "English → Spanish", matchLabel: "English | Spanish" },
-  { value: "mixed", label: "Mixed", matchLabel: "Mixed" },
-];
 
 export function TestSetupForm({
   totalWords,
@@ -44,12 +40,15 @@ export function TestSetupForm({
   due,
   tags,
   initialSource,
+  course,
 }: {
   totalWords: number;
   missedWords: number;
   due: { total: number; source_to_target: number; target_to_source: number };
   tags: TagWithCount[];
   initialSource?: Source;
+  /** Current course, for the direction labels. */
+  course: string;
 }) {
   const [mode, setMode] = useState<Mode>("typed");
   const [countChoice, setCountChoice] = useState<number | "custom">(10);
@@ -165,7 +164,7 @@ export function TestSetupForm({
 
       <Field label={mode === "match" ? "Columns" : "Direction"}>
         <div className="flex flex-wrap gap-2">
-          {DIRECTIONS.map((d) => (
+          {directionOptions(course).map((d) => (
             <Choice key={d.value} selected={direction === d.value} onClick={() => setDirection(d.value)}>
               {mode === "match" ? d.matchLabel : d.label}
             </Choice>

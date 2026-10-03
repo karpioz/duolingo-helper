@@ -26,9 +26,9 @@ export function normalize(text: string): string {
     .trim();
 }
 
-/** Remove diacritics: "aprendí" → "aprendi", "niño" → "nino". */
+/** Remove diacritics: "aprendí" → "aprendi", "niño" → "nino", Turkish dotless "ı" → "i". */
 export function stripAccents(text: string): string {
-  return text.normalize("NFD").replace(/\p{Diacritic}/gu, "").normalize("NFC");
+  return text.normalize("NFD").replace(/\p{Diacritic}/gu, "").replace(/ı/g, "i").normalize("NFC");
 }
 
 /** All normalized forms an accepted answer allows. */

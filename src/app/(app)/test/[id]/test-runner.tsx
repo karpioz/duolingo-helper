@@ -9,11 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { displayAnswer } from "@/lib/answers";
+import { courseInfo } from "@/lib/courses";
 import { formatDue } from "@/lib/srs";
 import { cn } from "@/lib/utils";
 import type { AnswerResult, ExamQuestion } from "@/server/exams";
-
-const ACCENTS = ["á", "é", "í", "ó", "ú", "ñ", "ü", "¿", "¡"];
 
 type Phase = "answering" | "checking" | "feedback";
 
@@ -23,12 +22,15 @@ export function TestRunner({
   startIndex,
   startCorrect,
   tags,
+  course,
 }: {
   examId: number;
   questions: ExamQuestion[];
   startIndex: number;
   startCorrect: number;
   tags: TagInfo[];
+  /** The exam's course: language names, `lang` attributes and the accent keys. */
+  course: string;
 }) {
   const router = useRouter();
   const [index, setIndex] = useState(startIndex);
@@ -48,15 +50,18 @@ export function TestRunner({
   const shownAt = useRef(0);
 
   const question = questions[index];
-  const answerInSpanish = question.direction === "target_to_source";
+  const info = courseInfo(course);
+  /** Answering in the language being learned (else in the "from" language, e.g. English). */
+  const answerInLearned = question.direction === "target_to_source";
+  const answerLang = answerInLearned ? info.learning : info.from;
   const choices = question.choices;
 
-  // New question: reset timer, focus input, and play the Spanish word when it is the prompt.
+  // New question: reset timer, focus input, and play the learned word when it is the prompt.
   useEffect(() => {
     shownAt.current = performance.now();
     inputRef.current?.focus();
-    if (!answerInSpanish) playAudio(question.audioUrl);
-  }, [index, answerInSpanish, question.audioUrl]);
+    if (!answerInLearned) playAudio(question.audioUrl);
+  }, [index, answerInLearned, question.audioUrl]);
 
   function setTag(wordId: number, tagId: number, on: boolean) {
     setTagState((s) => {
@@ -121,7 +126,7 @@ export function TestRunner({
       setNextReview(formatDue(new Date(res.result.nextDue), new Date()));
       if (res.result.kind !== "wrong") setCorrect((c) => c + 1);
       setPhase("feedback");
-      if (answerInSpanish) playAudio(question.audioUrl);
+      if (answerInLearned) playAudio(question.audioUrl);
     });
   }
 
@@ -168,9 +173,9 @@ export function TestRunner({
 
       <section className="flex flex-col items-center gap-2 text-center">
         <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-          {answerInSpanish ? "Translate into Spanish" : "Translate into English"}
+          Translate into {answerLang.name}
         </span>
-        {answerInSpanish ? (
+        {answerInLearned ? (
           <p className="text-2xl font-semibold text-balance">{question.prompt.map(displayAnswer).join(" · ")}</p>
         ) : (
           <div className="flex items-center gap-1">
@@ -194,7 +199,7 @@ export function TestRunner({
             picked={picked}
             correctChoice={result?.correctChoice}
             disabled={phase !== "answering"}
-            lang={answerInSpanish ? "es" : "en"}
+            lang={answerLang.code}
             onChoose={choose}
           />
         ) : (
@@ -203,19 +208,19 @@ export function TestRunner({
             value={value}
             onChange={(e) => setValue(e.target.value)}
             disabled={phase !== "answering"}
-            placeholder={answerInSpanish ? "Escribe en español…" : "Type in English…"}
+            placeholder={`Type in ${answerLang.name}…`}
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="off"
             spellCheck={false}
-            lang={answerInSpanish ? "es" : "en"}
+            lang={answerLang.code}
             className="h-12 text-center text-lg"
             aria-label="Your answer"
           />
         )}
-        {!choices && answerInSpanish && phase === "answering" && (
+        {!choices && answerLang.specialChars.length > 0 && phase === "answering" && (
           <div className="flex flex-wrap justify-center gap-1">
-            {ACCENTS.map((ch) => (
+            {answerLang.specialChars.map((ch) => (
               <Button key={ch} type="button" variant="outline" size="icon-sm" onClick={() => insertAccent(ch)}>
                 {ch}
               </Button>

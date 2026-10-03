@@ -5,19 +5,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { recentExams } from "@/server/exams";
 import { dueCounts } from "@/server/review";
 import { libraryStats, listTags } from "@/server/words";
+import { courseInfo } from "@/lib/courses";
 import { describeExam } from "@/lib/exam-labels";
+import { currentCourse } from "@/server/course";
 
 export default async function Home() {
   await connection();
-  const [stats, tags, exams, due] = await Promise.all([libraryStats(), listTags(), recentExams(), dueCounts()]);
+  const [stats, tags, exams, due, course] = await Promise.all([
+    libraryStats(),
+    listTags(),
+    recentExams(),
+    dueCounts(),
+    currentCourse(),
+  ]);
+  const info = courseInfo(course);
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-10">
       <section className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="space-y-1">
-          <h1 className="text-3xl font-semibold tracking-tight">¡Hola!</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">{info.learning.greeting}</h1>
           <p className="text-muted-foreground">
-            {stats.words.toLocaleString()} Spanish words from Duolingo, ready to practise.
+            {stats.words.toLocaleString()} {info.learning.name} words from Duolingo, ready to practise.
           </p>
         </div>
         <div className="flex gap-2">
@@ -69,7 +78,7 @@ export default async function Home() {
                   <li key={e.id}>
                     <Link href={`/test/${e.id}/results`} className="flex items-center justify-between gap-4 py-2.5 hover:underline">
                       <span className="text-sm">
-                        {describeExam(e.source, e.direction, e.mode, e.testName)}
+                        {describeExam(e)}
                         <span className="ml-2 text-muted-foreground">
                           {e.startedAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                         </span>

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { submitMatchBoard } from "@/app/actions";
+import { courseInfo } from "@/lib/courses";
 import { playAudio } from "@/components/audio-button";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -22,11 +23,15 @@ export function MatchRunner({
   examId,
   boards,
   startBoard,
+  course,
 }: {
   examId: number;
   boards: MatchBoard[];
   startBoard: number;
+  /** The exam's course, for the tiles' `lang` attributes. */
+  course: string;
 }) {
+  const info = courseInfo(course);
   const router = useRouter();
   const [boardIndex, setBoardIndex] = useState(startBoard);
   const [selected, setSelected] = useState<Tile | null>(null);
@@ -185,7 +190,7 @@ export function MatchRunner({
                   type="button"
                   onClick={() => select(tile)}
                   disabled={state === "matched" || status !== "playing"}
-                  lang={isSpanish(tile) ? "es" : "en"}
+                  lang={isSpanish(tile) ? info.learning.code : info.from.code}
                   aria-pressed={state === "selected"}
                   className={cn(
                     "relative flex min-h-14 items-center justify-center rounded-xl border-2 border-b-4 px-12 py-2 text-center text-base transition-colors",

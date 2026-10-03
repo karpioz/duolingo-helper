@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Duolingo Helper",
-  description: "Practice your Duolingo Spanish vocabulary",
+  description: "Practice the vocabulary of your Duolingo courses",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

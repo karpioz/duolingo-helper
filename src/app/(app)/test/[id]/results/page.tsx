@@ -31,7 +31,7 @@ export default async function ResultsPage({ params }: PageProps<"/test/[id]/resu
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8">
       <section className="space-y-1">
-        <p className="text-sm text-muted-foreground">{describeExam(session.source, session.direction, session.mode, testName)}</p>
+        <p className="text-sm text-muted-foreground">{describeExam({ ...session, testName })}</p>
         <h1 className="text-3xl font-semibold tracking-tight tabular-nums">
           {correct} / {answers.length} <span className="text-muted-foreground">· {pct}%</span>
         </h1>
@@ -53,6 +53,7 @@ export default async function ResultsPage({ params }: PageProps<"/test/[id]/resu
             mode={session.mode}
             lenient={lenient}
             label={`Retest ${missedIds.length} missed`}
+            course={session.course}
           />
         )}
         <Button variant={missedIds.length ? "outline" : "default"} nativeButton={false} render={<Link href="/test" />}>

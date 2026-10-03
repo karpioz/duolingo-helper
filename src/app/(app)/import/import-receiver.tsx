@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { switchCourse } from "@/app/actions";
+import { Flag } from "@/components/flag";
 import { Button } from "@/components/ui/button";
+import { courseInfo } from "@/lib/courses";
 import {
   DUOLINGO_ORIGIN,
   MSG_IMPORT,
@@ -21,8 +24,10 @@ type Status =
  * Receives words from the collector script on duolingo.com (which opens this page as a popup)
  * and saves them through the import API.
  */
-export function ImportReceiver() {
+export function ImportReceiver({ currentCourse }: { currentCourse: string }) {
   const [status, setStatus] = useState<Status>({ kind: "waiting" });
+  const [switching, startSwitch] = useTransition();
+  const [switched, setSwitched] = useState(false);
 
   useEffect(() => {
     async function onMessage(event: MessageEvent) {
@@ -70,15 +75,34 @@ export function ImportReceiver() {
       return <p className="text-destructive">Import failed: {status.message}</p>;
     case "done": {
       const r = status.result;
+      const info = courseInfo(r.course);
+      const other = r.course !== currentCourse && !switched;
       return (
         <div className="space-y-4">
-          <p className="font-medium">Import complete.</p>
+          <p className="flex items-center gap-2 font-medium">
+            <Flag code={info.learning.code} /> {info.learning.name} from {info.from.name}: import complete.
+          </p>
           <ul className="space-y-1 text-sm text-muted-foreground">
             <li>{r.received.toLocaleString()} words received ({r.unique.toLocaleString()} unique)</li>
             <li>{r.inserted.toLocaleString()} new, {r.updated.toLocaleString()} updated</li>
             <li>{r.translations.toLocaleString()} translations</li>
           </ul>
-          <Button nativeButton={false} render={<Link href="/" />}>Go to library</Button>
+          <div className="flex flex-wrap gap-2">
+            {other && (
+              <Button
+                disabled={switching}
+                onClick={() => startSwitch(async () => {
+                  await switchCourse(r.course);
+                  setSwitched(true);
+                })}
+              >
+                Switch to {info.learning.name}
+              </Button>
+            )}
+            <Button variant={other ? "outline" : "default"} nativeButton={false} render={<Link href="/" />}>
+              Go to library
+            </Button>
+          </div>
         </div>
       );
     }

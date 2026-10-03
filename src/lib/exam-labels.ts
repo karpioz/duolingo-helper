@@ -1,3 +1,5 @@
+import { courseInfo, DEFAULT_COURSE, directionLabels } from "./courses";
+
 export const SOURCE_LABELS: Record<string, string> = {
   recent: "Recently learned",
   alphabetical: "Alphabetical",
@@ -9,23 +11,25 @@ export const SOURCE_LABELS: Record<string, string> = {
   personal: "Personal",
 };
 
-export const DIRECTION_LABELS: Record<string, string> = {
-  source_to_target: "Spanish → English",
-  target_to_source: "English → Spanish",
-  mixed: "Mixed",
-};
+/** "Spanish → English", "English → Turkish", "Mixed". */
+export function directionLabel(direction: string, course: string = DEFAULT_COURSE): string {
+  const labels = directionLabels(courseInfo(course));
+  return labels[direction as keyof typeof labels] as string ?? direction;
+}
 
-/** `testName`: personal tests show their name in place of "Personal". */
-export function describeExam(source: string, direction: string, mode?: string, testName?: string | null) {
+type ExamLike = { source: string; direction: string; mode?: string; course?: string; testName?: string | null };
+
+/** "Match pairs · Due for review · Spanish → English"; personal tests show their name in place of "Personal". */
+export function describeExam({ source, direction, mode, course, testName }: ExamLike) {
   const from = source === "personal" && testName ? testName : (SOURCE_LABELS[source] ?? source);
-  const base = `${from} · ${DIRECTION_LABELS[direction] ?? direction}`;
+  const base = `${from} · ${directionLabel(direction, course)}`;
   if (mode === "match") return `Match pairs · ${base}`;
   if (mode === "choice") return `Multiple choice · ${base}`;
   return base;
 }
 
 /** Name suggested when saving a generated exam as a personal test: "Due for review · Spanish → English · 3 Oct". */
-export function defaultTestName(session: { source: string; direction: string; mode: string; startedAt: Date }) {
+export function defaultTestName(session: ExamLike & { startedAt: Date }) {
   const date = session.startedAt.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-  return `${describeExam(session.source, session.direction, session.mode)} · ${date}`;
+  return `${describeExam({ ...session, testName: null })} · ${date}`;
 }

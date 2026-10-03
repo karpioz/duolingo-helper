@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { signOut } from "@/app/auth/actions";
+import { CourseSwitcher } from "@/components/course-switcher";
 import { Button } from "@/components/ui/button";
 
 const links = [
@@ -9,10 +10,18 @@ const links = [
   { href: "/analytics", label: "Analytics" },
 ];
 
-export function SiteHeader({ email }: { email: string }) {
+export function SiteHeader({
+  email,
+  course,
+  courses,
+}: {
+  email: string;
+  course: string;
+  courses: { id: string; words: number }[];
+}) {
   return (
     <header className="border-b">
-      <nav className="mx-auto flex h-14 w-full max-w-3xl items-center gap-3 px-4 sm:gap-6">
+      <nav className="mx-auto flex h-14 w-full max-w-5xl items-center gap-3 px-4 sm:gap-6">
         <Link href="/" className="shrink-0 font-semibold tracking-tight" aria-label="Duolingo Helper">
           <span className="sm:hidden">DH</span>
           <span className="hidden sm:inline">Duolingo Helper</span>
@@ -25,8 +34,11 @@ export function SiteHeader({ email }: { email: string }) {
             </Link>
           ))}
         </div>
-        <form action={signOut} className="ml-auto flex shrink-0 items-center gap-2">
-          <span className="hidden text-xs text-muted-foreground sm:inline">{email}</span>
+        <div className="ml-auto shrink-0">
+          <CourseSwitcher current={course} courses={courses} />
+        </div>
+        <form action={signOut} className="flex shrink-0 items-center gap-2">
+          <span className="hidden text-xs text-muted-foreground lg:inline">{email}</span>
           <Button type="submit" variant="ghost" size="sm">
             Sign out
           </Button>

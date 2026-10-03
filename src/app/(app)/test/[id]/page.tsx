@@ -20,7 +20,7 @@ export default async function TestPage({ params }: PageProps<"/test/[id]">) {
     return (
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8">
         <ExamToolbar session={match.session} />
-        <MatchRunner examId={id} boards={match.boards} startBoard={match.boardIndex} />
+        <MatchRunner examId={id} boards={match.boards} startBoard={match.boardIndex} course={match.session.course} />
       </main>
     );
   }
@@ -37,6 +37,7 @@ export default async function TestPage({ params }: PageProps<"/test/[id]">) {
         questions={exam.questions}
         startIndex={exam.answered}
         startCorrect={exam.session.correct}
+        course={exam.session.course}
         tags={tags.filter((t) => t.system).map(({ id, name, color }) => ({ id, name, color }))}
       />
     </main>
@@ -46,7 +47,7 @@ export default async function TestPage({ params }: PageProps<"/test/[id]">) {
 /** What's running, plus "Add to my tests" and "Cancel". */
 function ExamToolbar({ session }: { session: ExamSession }) {
   const { personalTestId, testName } = examPersonalTest(session);
-  const label = describeExam(session.source, session.direction, session.mode, testName);
+  const label = describeExam({ ...session, testName });
   return (
     <div className="-mb-2 flex flex-wrap items-center gap-1.5">
       <p className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{label}</p>
