@@ -48,8 +48,8 @@ export function DirectionChoices({
               selected ? "border-teal bg-teal-soft ring-1 ring-teal" : "bg-card hover:bg-muted",
             )}
           >
-            {/* Flags fill the card's width, the arrow sits between them. */}
-            <span className="flex items-center gap-2">
+            {/* Flags span three quarters of the card, the arrow sits between them. */}
+            <span className="flex w-3/4 items-center gap-2">
               <Flag code={first.code} className="aspect-[3/2] h-auto w-auto min-w-0 flex-1 rounded-[5px]" />
               {d.value === "mixed" ? (
                 <ArrowLeftRight className={cn("size-5 shrink-0", selected ? "text-teal" : "text-muted-foreground")} aria-hidden />

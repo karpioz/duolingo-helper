@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Plus, Search, X } from "lucide-react";
+import { Check, Plus, Search, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { findWords, savePersonal } from "@/app/actions";
@@ -142,14 +142,21 @@ export function PersonalTestForm({
       </Field>
 
       <section className="space-y-3 rounded-2xl border bg-card p-4">
-        <div className="flex items-baseline justify-between gap-2">
+        <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-medium">
             In this test · {picked.length}
             {full && <span className="font-normal text-muted-foreground"> (max {MAX_WORDS})</span>}
           </h2>
           {picked.length > 0 && (
-            <Button type="button" variant="link" size="xs" className="px-0" onClick={() => setPicked([])}>
-              Remove all
+            <Button
+              type="button"
+              variant="destructive"
+              size="icon-sm"
+              aria-label="Remove all"
+              title="Remove all"
+              onClick={() => setPicked([])}
+            >
+              <Trash2 />
             </Button>
           )}
         </div>
@@ -247,13 +254,13 @@ export function PersonalTestForm({
           )}
         </div>
         {results && results.length > 0 && (
-          <ul className={cn("max-h-80 divide-y overflow-y-auto rounded-xl border", searching && "opacity-60")}>
+          <ul className={cn("max-h-96 divide-y overflow-y-auto rounded-2xl border bg-card", searching && "opacity-60")}>
             {results.map((w) => {
               const on = pickedIds.has(w.id);
               return (
                 <li key={w.id}>
-                  <div className="flex items-center gap-2 px-2 py-1.5">
-                    <AudioButton url={w.audioUrl} />
+                  <div className="flex items-center gap-3 px-3 py-2">
+                    {w.audioUrl ? <AudioButton url={w.audioUrl} variant="solid" /> : <span className="size-11 shrink-0" />}
                     <button
                       type="button"
                       onClick={() => (on ? remove(w.id) : add([w]))}
@@ -262,17 +269,17 @@ export function PersonalTestForm({
                       className="flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-1 text-left hover:bg-muted disabled:opacity-50"
                     >
                       <div className="min-w-0 flex-1">
-                        <div className="font-medium">{w.text}</div>
+                        <div className="font-heading text-base leading-tight font-bold tracking-tight">{w.text}</div>
                         <div className="truncate text-sm text-muted-foreground">{w.translations.map(displayAnswer).join(", ")}</div>
                       </div>
                       <span
                         className={cn(
-                          "flex size-7 shrink-0 items-center justify-center rounded-full border",
-                          on ? "border-primary bg-primary text-primary-foreground" : "text-muted-foreground",
+                          "flex size-8 shrink-0 items-center justify-center rounded-full",
+                          on ? "bg-teal-soft text-teal ring-1 ring-teal" : "bg-teal text-white",
                         )}
                         aria-hidden
                       >
-                        {on ? <Check className="size-4" /> : <Plus className="size-4" />}
+                        {on ? <Check className="size-4" /> : <Plus className="size-4" strokeWidth={2.75} />}
                       </span>
                     </button>
                   </div>

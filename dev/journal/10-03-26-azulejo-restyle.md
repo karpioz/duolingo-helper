@@ -85,6 +85,16 @@ The Words page looked flat next to the rest. Changes:
 - **Match pairs:** a bigger heading, flag + language headers over each column (they follow the
   board's direction), and semibold tiles with sand borders.
 
+## Follow-up: test creator
+
+- **Search results:** solid teal listen buttons and bold word headings on a cream list.
+  - Add is a teal circle with a white "+".
+  - Words already in the test show a teal-soft circle with a teal tick, so the two states
+    differ by fill, not only by icon.
+- **"Remove all"** is now a red trash icon button (`destructive`, `title` and `aria-label`
+  "Remove all").
+- **Direction card flags are 25% smaller everywhere** (the flag row spans `w-3/4` of the card).
+
 ## Next
 
 - Possibly a restyle pass on the remaining pages (results summary, words row density).
