@@ -7,6 +7,7 @@ import { checkAnswer, type CheckResult, type MatchKind } from "@/lib/answers";
 import { optionLabel, pickDistractors } from "@/lib/choice";
 import { buildBoards, pickLabel } from "@/lib/match";
 import { gradeFor } from "@/lib/srs";
+import { personalTestWordIds } from "./personal-tests";
 import { applyReview } from "./review";
 import { COURSE, WORD_ID, alphaKey, latestAnswers, wordTagIds, wordTranslations } from "./words";
 
@@ -15,7 +16,7 @@ export type Direction = "source_to_target" | "target_to_source";
 export const examOptionsSchema = z.object({
   mode: z.enum(["typed", "choice", "match"]).default("typed"),
   count: z.coerce.number().int().min(1).max(200),
-  source: z.enum(["recent", "alphabetical", "random", "tagged", "missed", "due", "retest"]),
+  source: z.enum(["recent", "alphabetical", "random", "tagged", "missed", "due", "retest", "personal"]),
   direction: z.enum(["source_to_target", "target_to_source", "mixed"]),
   lenient: z.boolean().default(true),
   tagIds: z.array(z.number().int()).default([]),
@@ -28,6 +29,8 @@ export const examOptionsSchema = z.object({
     .transform((s) => s || undefined),
   /** Retest only: the exact words to use. */
   wordIds: z.array(z.number().int()).max(200).default([]),
+  /** Personal only: the test to run. */
+  personalTestId: z.number().int().optional(),
 });
 export type ExamOptions = z.infer<typeof examOptionsSchema>;
 
@@ -37,7 +40,9 @@ type Question = {
   /** Multiple choice: word ids of the options in display order (the answer is one of them). */
   choices?: number[];
 };
-type StoredOptions = Pick<ExamOptions, "lenient" | "tagIds" | "startLetter"> & {
+type StoredOptions = Pick<ExamOptions, "lenient" | "tagIds" | "startLetter" | "personalTestId"> & {
+  /** Personal tests: the test's name when the exam started. */
+  testName?: string;
   questions: Question[];
   /** Match mode: number of pairs on each board, in question order. */
   boards?: number[];
@@ -97,6 +102,8 @@ async function pickWordIds(o: ExamOptions): Promise<number[]> {
       return (await dueWords(o)).map((d) => d.wordId);
     case "retest":
       return o.wordIds.slice(0, o.count);
+    case "personal":
+      return o.personalTestId === undefined ? [] : (await personalTestWordIds(o.personalTestId)).slice(0, o.count);
   }
 }
 
@@ -119,7 +126,7 @@ async function dueWords(o: ExamOptions): Promise<{ wordId: number; direction: Di
 const randomDirection = (): Direction => (Math.random() < 0.5 ? "source_to_target" : "target_to_source");
 
 /** Creates an exam session; returns its id, or null if no words match. */
-export async function createExam(o: ExamOptions): Promise<number | null> {
+export async function createExam(o: ExamOptions, extra: { testName?: string } = {}): Promise<number | null> {
   // Due reviews keep their order (most overdue first) and the direction that is due.
   const due = o.source === "due" ? await dueWords(o) : null;
   const dueDirection = new Map(due?.map((d) => [d.wordId, d.direction]));
@@ -147,7 +154,15 @@ export async function createExam(o: ExamOptions): Promise<number | null> {
     if (o.mode === "choice") questions = await withChoices(questions);
   }
 
-  const options: StoredOptions = { lenient: o.lenient, tagIds: o.tagIds, startLetter: o.startLetter, questions, boards };
+  const options: StoredOptions = {
+    lenient: o.lenient,
+    tagIds: o.tagIds,
+    startLetter: o.startLetter,
+    personalTestId: o.personalTestId,
+    testName: extra.testName,
+    questions,
+    boards,
+  };
   const [session] = await db
     .insert(examSessions)
     .values({ course: COURSE, mode: o.mode, direction: o.direction, source: o.source, size: questions.length, options })
@@ -360,7 +375,8 @@ export async function getResults(sessionId: number) {
     .innerJoin(words, eq(words.id, examAnswers.wordId))
     .where(eq(examAnswers.sessionId, sessionId))
     .orderBy(asc(examAnswers.id));
-  return { session, lenient: (session.options as StoredOptions).lenient, answers };
+  const options = session.options as StoredOptions;
+  return { session, lenient: options.lenient, testName: options.testName, answers };
 }
 
 export async function recentExams(limit = 5) {
@@ -374,6 +390,7 @@ export async function recentExams(limit = 5) {
       correct: examSessions.correct,
       startedAt: examSessions.startedAt,
       finishedAt: examSessions.finishedAt,
+      testName: sql<string | null>`${examSessions.options}->>'testName'`,
     })
     .from(examSessions)
     .where(and(isNotNull(examSessions.finishedAt), ne(examSessions.size, 0)))

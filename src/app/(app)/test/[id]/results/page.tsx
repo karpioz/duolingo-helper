@@ -19,7 +19,7 @@ export default async function ResultsPage({ params }: PageProps<"/test/[id]/resu
 
   const [results, tags] = await Promise.all([getResults(id), listTags()]);
   if (!results) notFound();
-  const { session, answers, lenient } = results;
+  const { session, answers, lenient, testName } = results;
   const systemTags = tags.filter((t) => t.system).map(({ id, name, color }) => ({ id, name, color }));
 
   const correct = answers.filter((a) => a.isCorrect).length;
@@ -30,7 +30,7 @@ export default async function ResultsPage({ params }: PageProps<"/test/[id]/resu
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-8">
       <section className="space-y-1">
-        <p className="text-sm text-muted-foreground">{describeExam(session.source, session.direction, session.mode)}</p>
+        <p className="text-sm text-muted-foreground">{describeExam(session.source, session.direction, session.mode, testName)}</p>
         <h1 className="text-3xl font-semibold tracking-tight tabular-nums">
           {correct} / {answers.length} <span className="text-muted-foreground">· {pct}%</span>
         </h1>
@@ -57,6 +57,11 @@ export default async function ResultsPage({ params }: PageProps<"/test/[id]/resu
         <Button variant={missedIds.length ? "outline" : "default"} nativeButton={false} render={<Link href="/test" />}>
           New test
         </Button>
+        {session.source === "personal" && (
+          <Button variant="outline" nativeButton={false} render={<Link href="/test/personal" />}>
+            My tests
+          </Button>
+        )}
       </div>
 
       <ul className="divide-y rounded-xl border">

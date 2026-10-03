@@ -1,7 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { startExam } from "@/app/actions";
+import { Choice, Field, OptionCard } from "@/components/option-controls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -59,6 +61,7 @@ export function TestSetupForm({
   const [lenient, setLenient] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
 
   const count = countChoice === "custom" ? Number(customCount) : countChoice;
   const available =
@@ -85,10 +88,16 @@ export function TestSetupForm({
   return (
     <form onSubmit={submit} className="flex flex-col gap-7">
       <Field label="Test type">
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid gap-2 sm:grid-cols-2">
           {MODES.map((m) => (
             <OptionCard key={m.value} selected={mode === m.value} onClick={() => setMode(m.value)} label={m.label} hint={m.hint} />
           ))}
+          <OptionCard
+            selected={false}
+            onClick={() => router.push("/test/personal")}
+            label="Personal →"
+            hint="Your own word lists: build, edit and run them"
+          />
         </div>
       </Field>
 
@@ -178,49 +187,5 @@ export function TestSetupForm({
         {pending ? "Starting…" : `Start test${countValid ? ` · ${Math.min(count, available)} words` : ""}`}
       </Button>
     </form>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <fieldset className="space-y-2">
-      <legend className="mb-2 text-sm font-medium">{label}</legend>
-      {children}
-    </fieldset>
-  );
-}
-
-function OptionCard({
-  selected,
-  onClick,
-  label,
-  hint,
-}: {
-  selected: boolean;
-  onClick: () => void;
-  label: string;
-  hint: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={selected}
-      className={cn(
-        "rounded-xl border p-3 text-left transition-colors",
-        selected ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted",
-      )}
-    >
-      <div className="text-sm font-medium">{label}</div>
-      <div className="text-xs text-muted-foreground">{hint}</div>
-    </button>
-  );
-}
-
-function Choice({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <Button type="button" variant={selected ? "default" : "outline"} aria-pressed={selected} onClick={onClick}>
-      {children}
-    </Button>
   );
 }

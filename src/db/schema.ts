@@ -26,7 +26,7 @@ export const directionEnum = pgEnum("direction", ["source_to_target", "target_to
 export const examDirectionEnum = pgEnum("exam_direction", ["source_to_target", "target_to_source", "mixed"]);
 export const examModeEnum = pgEnum("exam_mode", ["typed", "choice", "match"]);
 /** Which words an exam draws from. */
-export const examSourceEnum = pgEnum("exam_source", ["recent", "alphabetical", "random", "tagged", "missed", "due", "retest"]);
+export const examSourceEnum = pgEnum("exam_source", ["recent", "alphabetical", "random", "tagged", "missed", "due", "retest", "personal"]);
 
 /**
  * A word or phrase in the learned language (e.g. Spanish "aprendiste").
@@ -156,8 +156,35 @@ export const examAnswers = pgTable(
   ],
 );
 
+/** A word list built by hand, run as a typed or match-pairs test. */
+export const personalTests = pgTable("personal_tests", {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  course: text().notNull().default("es-en"),
+  name: text().notNull(),
+  mode: examModeEnum().notNull().default("typed"),
+  direction: examDirectionEnum().notNull().default("source_to_target"),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+});
+
+export const personalTestWords = pgTable(
+  "personal_test_words",
+  {
+    testId: integer("test_id")
+      .notNull()
+      .references(() => personalTests.id, { onDelete: "cascade" }),
+    wordId: integer("word_id")
+      .notNull()
+      .references(() => words.id, { onDelete: "cascade" }),
+    /** Order in the creator's list. */
+    position: integer().notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.testId, t.wordId] }), index("personal_test_words_word_idx").on(t.wordId)],
+);
+
 export type Word = typeof words.$inferSelect;
 export type Translation = typeof translations.$inferSelect;
 export type Tag = typeof tags.$inferSelect;
 export type ExamSession = typeof examSessions.$inferSelect;
 export type ExamAnswer = typeof examAnswers.$inferSelect;
+export type PersonalTest = typeof personalTests.$inferSelect;

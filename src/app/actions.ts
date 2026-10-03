@@ -1,12 +1,22 @@
 "use server";
 
 import { and, eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/db";
 import { wordTags } from "@/db/schema";
 import { assertUser } from "@/server/session";
 import { createExam, examOptionsSchema, recordAnswer, recordMatchBoard, type AnswerResult } from "@/server/exams";
+import {
+  MAX_PERSONAL_WORDS,
+  deletePersonalTest,
+  getPersonalTest,
+  personalTestSchema,
+  savePersonalTest,
+  searchWords,
+  type PickedWord,
+} from "@/server/personal-tests";
 
 export async function toggleWordTag(wordId: number, tagId: number, on: boolean): Promise<void> {
   await assertUser();
@@ -80,4 +90,63 @@ export async function submitMatchBoard(
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Could not save the board." };
   }
+}
+
+/** Test creator: words matching `q` (recently learned words when empty). */
+export async function findWords(q: string): Promise<PickedWord[]> {
+  await assertUser();
+  return searchWords(z.string().max(100).catch("").parse(q));
+}
+
+/**
+ * Creates (no `id`) or updates a personal test. Then goes back to My tests, or straight into a
+ * run of it with `start`.
+ */
+export async function savePersonal(
+  input: unknown,
+  id: number | null,
+  start: boolean,
+): Promise<{ error: string }> {
+  try {
+    await assertUser();
+  } catch {
+    return { error: "You are signed out. Reload the page and sign in." };
+  }
+  const parsed = personalTestSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid test." };
+  const testId = await savePersonalTest(parsed.data, id ?? undefined);
+  if (testId === null) return { error: "This test no longer exists." };
+  revalidatePath("/test/personal");
+  if (start) return startPersonal(testId);
+  redirect("/test/personal");
+}
+
+export async function removePersonal(id: number): Promise<void> {
+  await assertUser();
+  await deletePersonalTest(z.number().int().parse(id));
+  revalidatePath("/test/personal");
+}
+
+/** Runs a personal test with its own type and direction, all of its words. */
+export async function startPersonal(id: number): Promise<{ error: string }> {
+  try {
+    await assertUser();
+  } catch {
+    return { error: "You are signed out. Reload the page and sign in." };
+  }
+  const found = await getPersonalTest(z.number().int().parse(id));
+  if (!found) return { error: "This test no longer exists." };
+  const { test } = found;
+  const examId = await createExam(
+    examOptionsSchema.parse({
+      mode: test.mode,
+      count: MAX_PERSONAL_WORDS,
+      source: "personal",
+      direction: test.direction,
+      personalTestId: test.id,
+    }),
+    { testName: test.name },
+  );
+  if (examId === null) return { error: "This test has no words." };
+  redirect(`/test/${examId}`);
 }

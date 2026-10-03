@@ -45,25 +45,26 @@ function escapeLike(text: string) {
   return text.replace(/[\\%_]/g, (c) => `\\${c}`);
 }
 
+/** The word or one of its translations contains `q` (accent- and case-insensitive for Spanish). */
+export function matchesQuery(q: string): SQL {
+  const pattern = `%${escapeLike(q)}%`;
+  return or(
+    sql`unaccent(lower(${words.text})) like unaccent(lower(${pattern}))`,
+    exists(
+      db
+        .select({ one: sql`1` })
+        .from(translations)
+        .where(and(sql`${translations.wordId} = ${WORD_ID}`, ilike(translations.text, pattern))),
+    ),
+  )!;
+}
+
 export async function listWords(opts: { q?: string; sort?: WordSort; tagId?: number; page?: number }) {
   const page = Math.max(1, opts.page ?? 1);
   const filters: SQL[] = [eq(words.course, COURSE)];
 
   const q = opts.q?.trim();
-  if (q) {
-    const pattern = `%${escapeLike(q)}%`;
-    filters.push(
-      or(
-        sql`unaccent(lower(${words.text})) like unaccent(lower(${pattern}))`,
-        exists(
-          db
-            .select({ one: sql`1` })
-            .from(translations)
-            .where(and(sql`${translations.wordId} = ${WORD_ID}`, ilike(translations.text, pattern))),
-        ),
-      )!,
-    );
-  }
+  if (q) filters.push(matchesQuery(q));
   if (opts.tagId) {
     filters.push(
       exists(
