@@ -20,6 +20,7 @@
   --color-terracotta: var(--terracotta);
   --color-teal-soft: var(--teal-soft);
   --color-saffron: var(--saffron);
+  --color-saffron-soft: var(--saffron-soft);
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);
   --color-warning: var(--warning);
@@ -90,6 +91,8 @@
   --terracotta: #b4472a;
   --teal-soft: #e3efec;
   --saffron: #e0a21b;
+  /* Soft saffron: secondary icon buttons (Edit). */
+  --saffron-soft: #e5c787;
   --success: #0f5a5f;
   --success-soft: #e3efec;
   --warning: #8a5a00;

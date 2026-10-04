@@ -33,3 +33,10 @@ Follows [per-run type and direction](10-04-26-personal-test-run-options.md).
   background Chrome tab is slow). This is not caused by the tooltip: a second click works.
 - I clicked a test's name by mistake (it's a link to Edit). Use `find` refs, not coordinates read
   off a scaled screenshot.
+
+## Follow-up: flags and Edit colour
+
+- The flags in the direction pill lost their outline (`ring-0!` overrides `Flag`'s default
+  `ring-1 ring-black/15`). Other flags keep it.
+- Edit is a round button on `#e5c787`, added as the `saffron-soft` token (`bg-saffron-soft`,
+  `/80` on hover).

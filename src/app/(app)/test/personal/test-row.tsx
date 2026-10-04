@@ -130,9 +130,9 @@ export function TestRow({ test, course }: { test: TestRowData; course: string })
                 "Mixed"
               ) : (
                 <>
-                  <Flag code={first.code} className="h-3 w-[18px]" />
+                  <Flag code={first.code} className="h-3 w-[18px] ring-0!" />
                   {mode === "match" ? <span className="text-muted-foreground">|</span> : <ArrowRight className="size-3!" />}
-                  <Flag code={second.code} className="h-3 w-[18px]" />
+                  <Flag code={second.code} className="h-3 w-[18px] ring-0!" />
                 </>
               )}
               <ArrowLeftRight className={cn(directionChanged ? "text-teal" : "text-muted-foreground")} />
@@ -166,6 +166,7 @@ export function TestRow({ test, course }: { test: TestRowData; course: string })
           <Button
             variant="ghost"
             size="icon"
+            className="rounded-full bg-saffron-soft text-foreground hover:bg-saffron-soft/80"
             aria-label={`Edit ${test.name}`}
             nativeButton={false}
             render={<Link href={`/test/personal/${test.id}`} />}
