@@ -2,14 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { BackLink } from "@/components/back-link";
 import { Button } from "@/components/ui/button";
-import { directionLabel } from "@/lib/exam-labels";
 import { currentCourse } from "@/server/course";
 import { listPersonalTests } from "@/server/personal-tests";
-import { DeleteTestButton, StartTestButton } from "./test-actions";
+import { TestRow } from "./test-row";
 
 export const metadata: Metadata = { title: "My tests · Duolingo Helper" };
-
-const MODE_LABELS = { typed: "Type answers", choice: "Multiple choice", match: "Match pairs" } as const;
 
 export default async function MyTestsPage() {
   const [tests, course] = await Promise.all([listPersonalTests(), currentCourse()]);
@@ -39,31 +36,17 @@ export default async function MyTestsPage() {
       ) : (
         <ul className="divide-y rounded-2xl border bg-card">
           {tests.map((t) => (
-            <li key={t.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-              <div className="min-w-0 flex-1">
-                <Link href={`/test/personal/${t.id}`} className="font-medium hover:underline">
-                  {t.name}
-                </Link>
-                <div className="text-sm text-muted-foreground">
-                  {MODE_LABELS[t.mode]} · {directionLabel(t.direction, course)} · {t.words} {t.words === 1 ? "word" : "words"}
-                </div>
-                {t.lastRun && (
-                  <Link href={`/test/${t.lastRun.id}/results`} className="text-xs text-muted-foreground hover:underline">
-                    Last run {t.lastRun.at.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}:{" "}
-                    <span className="tabular-nums">
-                      {t.lastRun.correct}/{t.lastRun.size} · {Math.round((t.lastRun.correct / t.lastRun.size) * 100)}%
-                    </span>
-                  </Link>
-                )}
-              </div>
-              <div className="flex shrink-0 items-center gap-1.5">
-                <StartTestButton id={t.id} disabled={t.words === 0} />
-                <Button variant="outline" nativeButton={false} render={<Link href={`/test/personal/${t.id}`} />}>
-                  Edit
-                </Button>
-                <DeleteTestButton id={t.id} name={t.name} />
-              </div>
-            </li>
+            <TestRow
+              key={t.id}
+              course={course}
+              test={{
+                ...t,
+                lastRun: t.lastRun && {
+                  ...t.lastRun,
+                  date: t.lastRun.at.toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
+                },
+              }}
+            />
           ))}
         </ul>
       )}

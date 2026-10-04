@@ -67,8 +67,8 @@ export type PersonalTestSummary = {
   direction: "source_to_target" | "target_to_source" | "mixed";
   words: number;
   updatedAt: Date;
-  /** Latest finished run of this test. */
-  lastRun: { id: number; correct: number; size: number; at: Date } | null;
+  /** Latest finished run of this test, with the type it ran as (a run can override the test's). */
+  lastRun: { id: number; correct: number; size: number; at: Date; mode: PersonalTestSummary["mode"] } | null;
 };
 
 export async function listPersonalTests(): Promise<PersonalTestSummary[]> {
@@ -83,13 +83,14 @@ export async function listPersonalTests(): Promise<PersonalTestSummary[]> {
     run_correct: number | null;
     run_size: number | null;
     run_at: string | null;
+    run_mode: PersonalTestSummary["mode"] | null;
   }>(sql`
     select p.id, p.name, p.mode, p.direction, p.updated_at,
       (select count(*)::int from ${personalTestWords} pw where pw.test_id = p.id) as words,
-      r.id as run_id, r.correct as run_correct, r.size as run_size, r.finished_at as run_at
+      r.id as run_id, r.correct as run_correct, r.size as run_size, r.finished_at as run_at, r.mode as run_mode
     from ${personalTests} p
     left join lateral (
-      select e.id, e.correct, e.size, e.finished_at from ${examSessions} e
+      select e.id, e.correct, e.size, e.finished_at, e.mode from ${examSessions} e
       where (e.options->>'personalTestId')::int = p.id and e.finished_at is not null
       order by e.finished_at desc limit 1
     ) r on true
@@ -103,7 +104,7 @@ export async function listPersonalTests(): Promise<PersonalTestSummary[]> {
     words: r.words,
     updatedAt: new Date(r.updated_at),
     lastRun:
-      r.run_id == null ? null : { id: r.run_id, correct: r.run_correct!, size: r.run_size!, at: new Date(r.run_at!) },
+      r.run_id == null ? null : { id: r.run_id, correct: r.run_correct!, size: r.run_size!, at: new Date(r.run_at!), mode: r.run_mode! },
   }));
 }
 

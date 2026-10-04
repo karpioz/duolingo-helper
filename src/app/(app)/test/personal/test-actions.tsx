@@ -5,7 +5,16 @@ import { useState, useTransition } from "react";
 import { removePersonal, startPersonal } from "@/app/actions";
 import { Button } from "@/components/ui/button";
 
-export function StartTestButton({ id, disabled }: { id: number; disabled?: boolean }) {
+export function StartTestButton({
+  id,
+  disabled,
+  overrides,
+}: {
+  id: number;
+  disabled?: boolean;
+  /** Type and direction for this run only. */
+  overrides?: Parameters<typeof startPersonal>[1];
+}) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -16,7 +25,7 @@ export function StartTestButton({ id, disabled }: { id: number; disabled?: boole
         disabled={disabled || pending}
         onClick={() =>
           startTransition(async () => {
-            const res = await startPersonal(id);
+            const res = await startPersonal(id, overrides);
             if (res?.error) setError(res.error);
           })
         }

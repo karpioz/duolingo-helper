@@ -148,8 +148,21 @@ export async function removePersonal(id: number): Promise<void> {
   revalidatePath("/test/personal");
 }
 
-/** Runs a personal test with its own type and direction, all of its words. */
-export async function startPersonal(id: number): Promise<{ error: string }> {
+const runOverridesSchema = z
+  .object({
+    mode: z.enum(["typed", "match"]).optional(),
+    direction: z.enum(["source_to_target", "target_to_source", "mixed"]).optional(),
+  })
+  .default({});
+
+/**
+ * Runs a personal test with all of its words. Type and direction come from the test unless
+ * `overrides` picks others for this run only; the saved test is not changed.
+ */
+export async function startPersonal(
+  id: number,
+  overrides?: { mode?: "typed" | "match"; direction?: "source_to_target" | "target_to_source" | "mixed" },
+): Promise<{ error: string }> {
   try {
     await assertUser();
   } catch {
@@ -158,12 +171,15 @@ export async function startPersonal(id: number): Promise<{ error: string }> {
   const found = await getPersonalTest(z.number().int().parse(id));
   if (!found) return { error: "This test no longer exists." };
   const { test } = found;
+  const run = runOverridesSchema.parse(overrides);
+  const mode = run.mode ?? test.mode;
+  if (mode === "match" && found.words.length < 2) return { error: "Match pairs needs at least 2 words." };
   const examId = await createExam(
     examOptionsSchema.parse({
-      mode: test.mode,
+      mode,
       count: MAX_PERSONAL_WORDS,
       source: "personal",
-      direction: test.direction,
+      direction: run.direction ?? test.direction,
       personalTestId: test.id,
       course: test.course,
     }),
