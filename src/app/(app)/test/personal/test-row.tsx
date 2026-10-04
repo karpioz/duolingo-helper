@@ -1,15 +1,16 @@
 "use client";
 
-import { ArrowLeftRight, ArrowRight, Keyboard } from "lucide-react";
+import { ArrowLeftRight, ArrowRight, Keyboard, ListChecks, Pencil } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
 import { Flag } from "@/components/flag";
 import { courseInfo, directionLabels, type ExamDirection } from "@/lib/courses";
 import { cn } from "@/lib/utils";
 import { DeleteTestButton, StartTestButton } from "./test-actions";
 
-type RunMode = "typed" | "match";
+type Mode = "typed" | "choice" | "match";
 
 const MODE_LABELS = { typed: "Type answers", choice: "Multiple choice", match: "Match pairs" } as const;
 
@@ -33,6 +34,12 @@ function PairsIcon({ className }: { className?: string }) {
   );
 }
 
+function ModeIcon({ mode, className }: { mode: TestRowData["mode"]; className?: string }) {
+  if (mode === "match") return <PairsIcon className={className} />;
+  if (mode === "choice") return <ListChecks className={className} aria-hidden />;
+  return <Keyboard className={className} aria-hidden />;
+}
+
 /** A pill that toggles one run setting; teal while it differs from the saved test. */
 function RunPill({
   changed,
@@ -43,9 +50,9 @@ function RunPill({
     <button
       type="button"
       className={cn(
-        "inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium transition-colors",
+        "inline-flex h-6 items-center gap-1.5 rounded-full px-2 text-xs font-medium transition-colors",
         "disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-3.5 [&_svg]:shrink-0",
-        changed ? "border-teal bg-teal-soft text-teal ring-1 ring-teal" : "bg-card text-foreground hover:bg-muted",
+        changed ? "bg-teal-soft text-teal ring-1 ring-teal" : "bg-muted/70 text-foreground/80 hover:bg-muted",
         className,
       )}
       {...props}
@@ -58,8 +65,7 @@ function RunPill({
  * the saved test keeps its own (Edit changes those).
  */
 export function TestRow({ test, course }: { test: TestRowData; course: string }) {
-  const savedMode: RunMode = test.mode === "match" ? "match" : "typed";
-  const [mode, setMode] = useState<RunMode>(savedMode);
+  const [mode, setMode] = useState<Mode>(test.mode);
   const [direction, setDirection] = useState<ExamDirection>(test.direction);
 
   const { learning, from } = courseInfo(course);
@@ -69,16 +75,23 @@ export function TestRow({ test, course }: { test: TestRowData; course: string })
     test.direction === "mixed" ? ["mixed", "source_to_target", "target_to_source"] : ["source_to_target", "target_to_source"];
   const nextDirection = directions[(directions.indexOf(direction) + 1) % directions.length];
   const [first, second] = direction === "target_to_source" ? [from, learning] : [learning, from];
-  const directionText = mode === "match" ? labels.columns[direction] : labels[direction];
+  const directionText = (d: ExamDirection) => (mode === "match" ? labels.columns[d] : labels[d]);
+  // Type answers ⇄ match pairs; multiple choice is only offered when the test was saved that way.
+  const modes: Mode[] = test.mode === "choice" ? ["choice", "typed", "match"] : ["typed", "match"];
   const canMatch = test.words >= 2;
+  const nextMode = (m: Mode): Mode => {
+    const next = modes[(modes.indexOf(m) + 1) % modes.length];
+    return next === "match" && !canMatch ? nextMode(next) : next;
+  };
+  const otherMode = nextMode(mode);
   const modeChanged = mode !== test.mode;
   const directionChanged = direction !== test.direction;
-  const onlyThisRun = "Just for this run. Edit the test to change it for good.";
+  const onlyThisRun = "Just this run. Edit the test to keep it.";
 
   return (
-    <li className="flex flex-wrap items-center gap-3 px-4 py-3">
+    <li className="flex items-center gap-3 px-4 py-3">
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <div>
+        <div className="min-w-0">
           <Link href={`/test/personal/${test.id}`} className="font-medium hover:underline">
             {test.name}
           </Link>
@@ -87,55 +100,79 @@ export function TestRow({ test, course }: { test: TestRowData; course: string })
             · {test.words} {test.words === 1 ? "word" : "words"}
           </span>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <RunPill
-            changed={modeChanged}
-            disabled={!canMatch && mode === "typed"}
-            onClick={() => setMode(mode === "typed" ? "match" : "typed")}
-            aria-label={`Type: ${MODE_LABELS[mode]}. Switch to ${MODE_LABELS[mode === "typed" ? "match" : "typed"]}`}
-            title={modeChanged ? onlyThisRun : canMatch || mode === "match" ? "Switch type" : "Match pairs needs at least 2 words"}
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+          <Tooltip
+            label={
+              otherMode === mode
+                ? "Match pairs needs at least 2 words"
+                : modeChanged
+                  ? onlyThisRun
+                  : `Switch to ${MODE_LABELS[otherMode]}`
+            }
           >
-            {mode === "match" ? <PairsIcon /> : <Keyboard />}
-            {MODE_LABELS[mode]}
-          </RunPill>
-          <RunPill
-            changed={directionChanged}
-            onClick={() => setDirection(nextDirection)}
-            aria-label={`Direction: ${directionText}. Switch to ${mode === "match" ? labels.columns[nextDirection] : labels[nextDirection]}`}
-            title={directionChanged ? onlyThisRun : "Switch direction"}
-          >
-            {direction === "mixed" ? (
-              "Mixed"
-            ) : (
-              <>
-                <Flag code={first.code} className="h-3 w-[18px]" />
-                {first.name}
-                {mode === "match" ? <span className="text-muted-foreground">|</span> : <ArrowRight />}
-                <Flag code={second.code} className="h-3 w-[18px]" />
-                {second.name}
-              </>
-            )}
-            <ArrowLeftRight className={cn("ml-0.5", directionChanged ? "text-teal" : "text-muted-foreground")} />
-          </RunPill>
+            <RunPill
+              changed={modeChanged}
+              disabled={otherMode === mode}
+              onClick={() => setMode(otherMode)}
+              aria-label={`Type: ${MODE_LABELS[mode]}. Switch to ${MODE_LABELS[otherMode]}`}
+            >
+              <ModeIcon mode={mode} />
+              {MODE_LABELS[mode]}
+            </RunPill>
+          </Tooltip>
+          <Tooltip label={`${directionText(direction)}. ${directionChanged ? onlyThisRun : "Click to reverse."}`}>
+            <RunPill
+              changed={directionChanged}
+              onClick={() => setDirection(nextDirection)}
+              aria-label={`Direction: ${directionText(direction)}. Switch to ${directionText(nextDirection)}`}
+            >
+              {direction === "mixed" ? (
+                "Mixed"
+              ) : (
+                <>
+                  <Flag code={first.code} className="h-3 w-[18px]" />
+                  {mode === "match" ? <span className="text-muted-foreground">|</span> : <ArrowRight className="size-3!" />}
+                  <Flag code={second.code} className="h-3 w-[18px]" />
+                </>
+              )}
+              <ArrowLeftRight className={cn(directionChanged ? "text-teal" : "text-muted-foreground")} />
+            </RunPill>
+          </Tooltip>
+          {test.lastRun && (
+            <Tooltip label={`Last run ${test.lastRun.date} as ${MODE_LABELS[test.lastRun.mode]}. Open results.`}>
+              <Link
+                href={`/test/${test.lastRun.id}/results`}
+                className="ml-1 inline-flex items-center gap-1 text-xs text-muted-foreground tabular-nums hover:text-foreground hover:underline"
+              >
+                <ModeIcon mode={test.lastRun.mode} className="size-3" />
+                {test.lastRun.correct}/{test.lastRun.size} · {test.lastRun.date}
+              </Link>
+            </Tooltip>
+          )}
         </div>
-        {test.lastRun && (
-          <Link href={`/test/${test.lastRun.id}/results`} className="text-xs text-muted-foreground hover:underline">
-            Last run {test.lastRun.date} · {MODE_LABELS[test.lastRun.mode]}:{" "}
-            <span className="tabular-nums">
-              {test.lastRun.correct}/{test.lastRun.size} · {Math.round((test.lastRun.correct / test.lastRun.size) * 100)}%
-            </span>
-          </Link>
-        )}
       </div>
-      <div className="flex shrink-0 items-center gap-1.5">
+      <div className="flex shrink-0 items-center gap-1">
         <StartTestButton
           id={test.id}
           disabled={test.words === 0}
-          overrides={{ mode: modeChanged ? mode : undefined, direction: directionChanged ? direction : undefined }}
+          label={`Start: ${MODE_LABELS[mode]} · ${directionText(direction)}`}
+          overrides={{
+            // Never "choice": that's only reachable as the test's own type, which needs no override.
+            mode: modeChanged && mode !== "choice" ? mode : undefined,
+            direction: directionChanged ? direction : undefined,
+          }}
         />
-        <Button variant="outline" nativeButton={false} render={<Link href={`/test/personal/${test.id}`} />}>
-          Edit
-        </Button>
+        <Tooltip label="Edit test">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`Edit ${test.name}`}
+            nativeButton={false}
+            render={<Link href={`/test/personal/${test.id}`} />}
+          >
+            <Pencil />
+          </Button>
+        </Tooltip>
         <DeleteTestButton id={test.id} name={test.name} />
       </div>
     </li>

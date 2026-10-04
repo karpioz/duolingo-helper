@@ -1,17 +1,21 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { LoaderCircle, Play, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { removePersonal, startPersonal } from "@/app/actions";
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export function StartTestButton({
   id,
   disabled,
+  label = "Start",
   overrides,
 }: {
   id: number;
   disabled?: boolean;
+  /** Tooltip and accessible name, e.g. "Start: Match pairs · Spanish | English". */
+  label?: string;
   /** Type and direction for this run only. */
   overrides?: Parameters<typeof startPersonal>[1];
 }) {
@@ -21,17 +25,22 @@ export function StartTestButton({
   return (
     <>
       {error && <span className="text-xs text-destructive">{error}</span>}
-      <Button
-        disabled={disabled || pending}
-        onClick={() =>
-          startTransition(async () => {
-            const res = await startPersonal(id, overrides);
-            if (res?.error) setError(res.error);
-          })
-        }
-      >
-        {pending ? "Starting…" : "Start"}
-      </Button>
+      <Tooltip label={pending ? "Starting…" : label}>
+        <Button
+          size="icon"
+          className="rounded-full"
+          aria-label={label}
+          disabled={disabled || pending}
+          onClick={() =>
+            startTransition(async () => {
+              const res = await startPersonal(id, overrides);
+              if (res?.error) setError(res.error);
+            })
+          }
+        >
+          {pending ? <LoaderCircle className="animate-spin" /> : <Play className="translate-x-px fill-current" />}
+        </Button>
+      </Tooltip>
     </>
   );
 }
@@ -43,15 +52,11 @@ export function DeleteTestButton({ id, name }: { id: number; name: string }) {
 
   if (!confirming) {
     return (
-      <Button
-        variant="destructive"
-        size="icon"
-        aria-label={`Delete ${name}`}
-        title="Delete"
-        onClick={() => setConfirming(true)}
-      >
-        <Trash2 />
-      </Button>
+      <Tooltip label="Delete test">
+        <Button variant="destructive" size="icon" aria-label={`Delete ${name}`} onClick={() => setConfirming(true)}>
+          <Trash2 />
+        </Button>
+      </Tooltip>
     );
   }
   return (
