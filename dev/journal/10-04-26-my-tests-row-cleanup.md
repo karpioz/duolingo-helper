@@ -40,3 +40,5 @@ Follows [per-run type and direction](10-04-26-personal-test-run-options.md).
   `ring-1 ring-black/15`). Other flags keep it.
 - Edit is a round button on `#e5c787`, added as the `saffron-soft` token (`bg-saffron-soft`,
   `/80` on hover).
+- The creator's Cancel (new and edit) uses the `destructive` button variant, like the trash
+  buttons: light red background, red text.

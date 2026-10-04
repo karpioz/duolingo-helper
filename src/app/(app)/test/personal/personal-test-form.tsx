@@ -303,7 +303,7 @@ export function PersonalTestForm({
         <Button type="button" size="lg" variant="outline" disabled={!canSave} onClick={() => save(true)}>
           Save and start
         </Button>
-        <Button type="button" size="lg" variant="ghost" nativeButton={false} render={<Link href="/test/personal" />}>
+        <Button type="button" size="lg" variant="destructive" nativeButton={false} render={<Link href="/test/personal" />}>
           Cancel
         </Button>
       </div>
