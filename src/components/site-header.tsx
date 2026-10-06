@@ -31,7 +31,7 @@ export function SiteHeader({
             Duolingo <span className="text-terracotta">Helper</span>
           </span>
         </Link>
-        <NavLinks />
+        <NavLinks course={course} />
         <div className="ml-auto shrink-0">
           <CourseSwitcher current={course} courses={courses} />
         </div>

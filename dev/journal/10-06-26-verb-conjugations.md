@@ -50,3 +50,15 @@ ten**g**o, ten**d**ré, d**u**rmió, **fui**.
 Checked in Chrome: `fui` (ir, with ser and irse under "Also"), `tengamos` (opens the
 subjunctive tab), autocomplete for `dor`, and `me acuesto` at 360px. No horizontal overflow at
 360px. Dark mode (`.dark` on `<html>`) reads fine.
+
+## Follow-up: Spanish courses only
+
+There is now a Turkish course, so the **Verbs** link appears only when the current course's learning
+language is Spanish. `NavLinks` takes the course, and links can list `languages`. If you switch
+course while on `/verbs`, the page says conjugations are Spanish-only. It shows no Spanish data.
+
+Turkish conjugation was considered and left out. The only npm option is `turkish-conjugator`
+(last released 2019). It has no translations and no vetted data, unlike the Jehle database
+behind the Spanish page. Turkish verbs are agglutinative and mostly regular (vowel harmony,
+consonant softening, a dozen irregular aorists), so a Turkish page would need a rule engine
+plus tests against a reference rather than a lookup table. That would be a separate project.

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { courseInfo } from "@/lib/courses";
 import { cn } from "@/lib/utils";
 import {
   type FormMatch,
@@ -16,6 +17,7 @@ import {
   type Verb,
   verbIndex,
 } from "@/lib/verbs";
+import { currentCourse } from "@/server/course";
 import { VerbSearch } from "./verb-search";
 
 export const metadata: Metadata = { title: "Verbs · Duolingo Helper" };
@@ -27,7 +29,19 @@ const MORE = TENSES.slice(4);
 const verbHref = (inf: string) => `/verbs?v=${encodeURIComponent(inf)}`;
 
 export default async function VerbsPage({ searchParams }: PageProps<"/verbs">) {
-  const sp = await searchParams;
+  const [sp, course] = await Promise.all([searchParams, currentCourse()]);
+  const info = courseInfo(course);
+  // The nav hides Verbs for other courses; this covers switching course while on the page.
+  if (info.learning.code !== "es") {
+    return (
+      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-5 px-4 py-8">
+        <h1 className="text-4xl font-extrabold">Verbs</h1>
+        <p className="py-10 text-center text-muted-foreground">
+          Verb conjugations are available for Spanish only. Switch to your Spanish course to use them.
+        </p>
+      </main>
+    );
+  }
   const q = (Array.isArray(sp.v) ? sp.v[0] : sp.v)?.trim() ?? "";
   const result = q ? lookup(q) : undefined;
   const verb = result?.kind === "verb" ? result.verb : undefined;
