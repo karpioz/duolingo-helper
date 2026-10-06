@@ -42,4 +42,11 @@ ten**g**o, ten**d**ré, d**u**rmió, **fui**.
   diff, if a bit literal.
 - The theme has no dark overrides for terracotta/saffron. The page adds `dark:` variants for
   its highlights.
-- Not yet checked in a browser: the dev server needs a sign-in.
+- Chrome won't shrink the window below a ~634px viewport. To test phone width, load the page in
+  a 360px same-origin iframe and check `scrollWidth`.
+- The hydration warning on `<body cz-shortcut-listen>` comes from the ColorZilla extension, not
+  from the app.
+
+Checked in Chrome: `fui` (ir, with ser and irse under "Also"), `tengamos` (opens the
+subjunctive tab), autocomplete for `dor`, and `me acuesto` at 360px. No horizontal overflow at
+360px. Dark mode (`.dark` on `<html>`) reads fine.
